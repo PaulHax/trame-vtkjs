@@ -42,11 +42,11 @@ def write_sdist(state):
             archive.addfile(member, io.BytesIO(content))
 
 
-def make_artifacts(directory, version="0.2.3"):
+def make_artifacts(directory, version="0.2.3", *, commit=COMMIT, tree="b" * 40):
     directory.mkdir(parents=True, exist_ok=True)
     info = {
-        "bridgeCommit": COMMIT,
-        "bridgeSource": {"commit": COMMIT, "tree": "b" * 40, "dirty": False},
+        "bridgeCommit": commit,
+        "bridgeSource": {"commit": commit, "tree": tree, "dirty": False},
         "bundle": {
             "sha256": artifacts.digest(b"qualified UMD"),
             "bytes": len(b"qualified UMD"),

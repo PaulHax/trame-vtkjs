@@ -179,7 +179,7 @@ jobs:
             echo 'publish=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          python release_plan.py check --plan dist/release-plan.json
+          python release_plan.py check --plan dist/release-plan.json --evidence dist/release-evidence.json
           ./release.sh verify
           echo 'publish=true' >> "$GITHUB_OUTPUT"
       - name: Publish the tested GitHub artifacts

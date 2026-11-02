@@ -153,11 +153,25 @@ def plan(root: Path) -> dict:
         }
 
 
-def check(root: Path, expected: dict) -> None:
+def check(root: Path, expected: dict, evidence: dict | None = None) -> None:
     actual = plan(root)
     if actual != expected:
         changes = [name for name in actual if actual[name] != expected.get(name)]
         raise ReleasePlanError("stale release plan: " + ", ".join(changes))
+    if evidence is not None:
+        if actual["release"] is not True:
+            raise ReleasePlanError("the semantic plan does not select a release")
+        wheel, sdist = evidence.get("wheel"), evidence.get("sdist")
+        if not isinstance(wheel, dict) or not isinstance(sdist, dict):
+            raise ReleasePlanError("release evidence must describe wheel and sdist")
+        if (wheel.get("version"), wheel.get("tag"), sdist.get("version")) != (
+            actual["version"],
+            actual["tag"],
+            actual["version"],
+        ):
+            raise ReleasePlanError(
+                "artifact identity does not match the semantic release plan"
+            )
 
 
 def lint_message(message: str, parser: ConventionalCommitParser) -> None:
@@ -213,6 +227,7 @@ def main() -> None:
     prepare.add_argument("--github-output", type=Path)
     verify = subparsers.add_parser("check")
     verify.add_argument("--plan", type=Path, required=True)
+    verify.add_argument("--evidence", type=Path)
     lint = subparsers.add_parser("lint")
     lint.add_argument("--base")
     lint.add_argument("--head", default="HEAD")
@@ -231,7 +246,8 @@ def main() -> None:
                     stream.write(f"tag={result['tag']}\n")
             print(json.dumps(result, sort_keys=True))
         elif args.command == "check":
-            check(root, json.loads(args.plan.read_text()))
+            evidence = json.loads(args.evidence.read_text()) if args.evidence else None
+            check(root, json.loads(args.plan.read_text()), evidence)
             print("Release plan matches the source and release history")
         elif args.message_file:
             semantic, _ = configuration(root)

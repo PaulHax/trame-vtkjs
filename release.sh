@@ -164,7 +164,7 @@ verify() {
 publish() {
   verify
   if [ -n "$PUBLIC_VERSION" ]; then
-    "$PYTHON" release_plan.py check --plan dist/release-plan.json \
+    "$PYTHON" release_plan.py check --plan dist/release-plan.json --evidence "$EVIDENCE_REL" \
       || die "public release plan no longer matches HEAD"
   fi
   local wheel wheel_sha fields
