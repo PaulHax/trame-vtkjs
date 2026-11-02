@@ -9,6 +9,16 @@ Contributing to trame-vtkjs
 #. Create a fork of the repository on GitHub
 #. Push your branch to your fork, and open a pull request
 
+Commit messages
+###############
+
+Use Conventional Commits for every new commit, for example
+``feat: add a view option`` or ``fix: repair scene recovery``. CI checks the
+incoming commits so rebase merges retain valid release messages. Feature,
+fix, performance and breaking commits select releases when they reach ``main``;
+ordinary documentation and maintenance commits run checks without publishing.
+See ``RELEASING.md`` for version rules and publisher setup.
+
 Tips
 ####
 

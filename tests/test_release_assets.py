@@ -24,15 +24,22 @@ def release(tmp_path, monkeypatch):
     notes = tmp_path / "notes.txt"
     notes.write_text("Release notes")
     state = SimpleNamespace(
-        exists=True, tag_commit=COMMIT, assets={}, mutations=[],
-        wheel=wheel, evidence=evidence, notes=notes,
+        exists=True,
+        tag_commit=COMMIT,
+        assets={},
+        mutations=[],
+        wheel=wheel,
+        evidence=evidence,
+        notes=notes,
     )
 
     def published():
-        return {"assets": [
-            {"name": name, "browser_download_url": f"https://example.test/{name}"}
-            for name in state.assets
-        ]}
+        return {
+            "assets": [
+                {"name": name, "browser_download_url": f"https://example.test/{name}"}
+                for name in state.assets
+            ]
+        }
 
     def fake_api(path, *, missing_ok=False):
         if "/git/ref/tags/" in path:
@@ -48,7 +55,7 @@ def release(tmp_path, monkeypatch):
             Path(args[args.index("--output") + 1]).write_bytes(state.assets[name])
         elif operation in (("release", "upload"), ("release", "create")):
             state.mutations.append(args)
-            for item in args[3:args.index("--repo")]:
+            for item in args[3 : args.index("--repo")]:
                 path = Path(item)
                 state.assets[path.name.replace("+", ".")] = path.read_bytes()
             state.exists = True
@@ -68,7 +75,9 @@ def publish(state):
 
 
 def add_existing(state, path, content=None):
-    state.assets[path.name.replace("+", ".")] = path.read_bytes() if content is None else content
+    state.assets[path.name.replace("+", ".")] = (
+        path.read_bytes() if content is None else content
+    )
 
 
 def test_identical_assets_are_an_idempotent_no_op(release):
@@ -102,7 +111,13 @@ def test_new_release_uses_the_tested_source_commit_and_assets(release):
     release.tag_commit = None
     publish(release)
     args = release.mutations[0]
-    assert args[:5] == ("release", "create", TAG, str(release.wheel), str(release.evidence))
+    assert args[:5] == (
+        "release",
+        "create",
+        TAG,
+        str(release.wheel),
+        str(release.evidence),
+    )
     assert args[args.index("--target") + 1] == COMMIT
     assert args[args.index("--repo") + 1] == REPOSITORY
     assert args[args.index("--notes-file") + 1] == str(release.notes)
@@ -112,6 +127,46 @@ def test_existing_tag_cannot_be_retargeted(release):
     release.tag_commit = "b" * 40
     with pytest.raises(release_assets.ReleaseError, match="points to"):
         publish(release)
+    assert release.mutations == []
+
+
+def test_public_release_is_stable_and_uses_the_tested_assets(release):
+    release.exists = False
+    release.tag_commit = None
+    release_assets.publish(
+        REPOSITORY,
+        TAG,
+        COMMIT,
+        release.notes,
+        [release.wheel, release.evidence],
+        prerelease=False,
+    )
+    args = release.mutations[0]
+    assert "--prerelease" not in args
+    assert args[args.index("--target") + 1] == COMMIT
+
+
+def test_existing_prerelease_is_not_silently_treated_as_a_stable_release(
+    release, monkeypatch
+):
+    original = release_assets.api
+
+    def lookup(path, *, missing_ok=False):
+        result = original(path, missing_ok=missing_ok)
+        if "/releases/tags/" in path:
+            result["prerelease"] = True
+        return result
+
+    monkeypatch.setattr(release_assets, "api", lookup)
+    with pytest.raises(release_assets.ReleaseError, match="prerelease status"):
+        release_assets.publish(
+            REPOSITORY,
+            TAG,
+            COMMIT,
+            release.notes,
+            [release.wheel, release.evidence],
+            prerelease=False,
+        )
     assert release.mutations == []
 
 
@@ -125,8 +180,11 @@ def test_ambiguous_sanitized_assets_are_rejected(release):
 
 def test_api_failures_are_not_treated_as_a_missing_release(monkeypatch):
     monkeypatch.setattr(
-        release_assets.subprocess, "run",
-        lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout="", stderr="rate limit (HTTP 403)"),
+        release_assets.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(
+            returncode=1, stdout="", stderr="rate limit (HTTP 403)"
+        ),
     )
     with pytest.raises(release_assets.ReleaseError, match="403"):
         release_assets.api("repos/owner/product/releases/tags/v1", missing_ok=True)
@@ -134,7 +192,13 @@ def test_api_failures_are_not_treated_as_a_missing_release(monkeypatch):
 
 def test_missing_api_resource_is_distinct_from_a_failed_lookup(monkeypatch):
     monkeypatch.setattr(
-        release_assets.subprocess, "run",
-        lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout="", stderr="Not Found (HTTP 404)"),
+        release_assets.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(
+            returncode=1, stdout="", stderr="Not Found (HTTP 404)"
+        ),
     )
-    assert release_assets.api("repos/owner/product/releases/tags/v1", missing_ok=True) is None
+    assert (
+        release_assets.api("repos/owner/product/releases/tags/v1", missing_ok=True)
+        is None
+    )

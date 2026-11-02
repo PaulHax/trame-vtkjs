@@ -28,8 +28,9 @@ the same wheel; there is no separate npm release to install.
     python -m pip install "dist/trame_vtkjs-<version>-py3-none-any.whl[vtk]"
 
 The ``vtk`` extra selects the supported VTK 9.6 series. VTK 9.7 needs separate
-scene reconciliation qualification. A Python package index release is not
-configured; use the wheel rather than installing an unrelated package.
+scene reconciliation qualification. The release workflow publishes ``trame-vtkjs`` to PyPI after release-causing
+commits reach ``main`` and the trusted publisher is configured. See
+``RELEASING.md`` for the initial repository and publisher setup.
 
 Public Python API
 ----------------------------------------
@@ -105,59 +106,46 @@ Install the library
 Release flow
 ----------------------------------------
 
-The independent release line starts at ``0.1.0``. GitHub prerelease wheels use
-``0.1.0+git.<sha>`` (computed by ``hatch_build.py``) and tags
-``v0.1.0-git.<sha>``. ``importlib.metadata.version("trame-vtkjs")`` identifies
-the source revision of the embedded UMD bundle.
+Pull requests validate Conventional Commit messages, build the locked browser
+runtime, and test the installed wheel. On ``main``, Python Semantic Release's
+conventional parser and version calculation select a public ``X.Y.Z`` version
+before the distributions are built. The first product release is ``0.1.0``;
+``feat`` selects a minor release, ``fix`` and ``perf`` select a patch release,
+and ordinary documentation/maintenance commits do not publish. Breaking changes
+select a minor release before 1.0 and a major release thereafter.
 
-The shipping vtk.js history becomes ``main`` when the repository identity is
-changed. The unrelated historical upstream branches are archival references,
-not merge bases for this product.
+Product tags use ``trame-vtkjs-vX.Y.Z``, excluding inherited releases for other
+product identities. No version or changelog commit changes the source revision
+between testing and publication. ``build-info.json`` records the exact source
+commit, tree, dependency pins and browser bundle hash inside every wheel.
 
-The wheel carries no VTK.wasm runtime. Its views render through vtk.js, which
-vite bundles into ``serve/js/trame_vtkjs.umd.js``; the only WebAssembly it
-ships is the offline 3D Tiles decoders under ``serve/wasm/tiles3d/``.
+``.github/workflows/release.yml`` builds the wheel and source distribution once,
+checks that they contain the same runtime assets, installs and tests the wheel,
+and transfers those artifacts to separate GitHub and PyPI publication jobs.
+The PyPI job uses OIDC trusted publishing through the ``pypi`` environment.
+It does not check out or rebuild the source. Existing GitHub/PyPI files must
+match the tested bytes; conflicting files stop the release.
 
-``.github/workflows/build-fork-wheel.yml`` builds releases from ``main``. CI
-builds the wheel once, runs its Python and shared-context smoke gates, then
-publishes the tested artifact. Its inputs are immutable: vtk-js is fetched at
-the commit in
-``vtkjs-fork.env`` and ``pointcloud-lod`` is installed from the lockfile.
-
-``verify_chain.py`` proves that before any wheel ships: the linked vtk.js is a
-clean checkout of the pinned commit, ``pointcloud-lod`` came from its
-integrity-checked tarball rather than a dev link, nothing declares a
-``@kitware/vtk.js`` range (no released version has ``vtkPointGaussianMapper``),
-and the built bundle really does carry the mapper, its OpenGL override, the
-fork's world-space point sizing and the Geometry profile. What it found is
-written to ``serve/js/build-info.json``, which ships inside the wheel, and to
-``dist/release-evidence.json``, which is attached to the release next to the
-wheel it describes.
-
-For local development checks, run ``release.sh build`` at the repository root. It
-requires the vtk-js fork to be linked into ``vue-components`` (see Development
-above) and publishes nothing:
+Local development builds retain ``0.1.0+git.<sha>`` versions and publish nothing:
 
 .. code-block:: console
 
     ./release.sh build
+    ./release.sh verify
 
-This rebuilds ``vue-components`` (the UMD bundle), builds the wheel, and asserts
-the UMD embedded in the wheel byte-matches the freshly built
-``serve/js/trame_vtkjs.umd.js`` (sha256 compare) so a stale wheel can never
-ship. It writes the wheel and ``release-evidence.json`` to ``dist/`` and prints
-the stamped version and the release tag.
+A public build supplies ``TRAME_VTKJS_RELEASE_VERSION`` from the release plan.
+Its source distribution preserves that version and the built browser assets,
+so consumers can build a wheel without Git, npm or a release environment.
 
-CI's final upload step runs ``release.sh publish`` on the tested wheel without
-rebuilding it. The command checks that ``dist/release-evidence.json`` names
-``HEAD`` and the wheel's ``sha256``, then uploads the wheel and evidence to
-the GitHub prerelease ``v0.1.0-git.<sha>``. It prints the dependency
-URL and wheel hash for application consumers. Existing assets are immutable:
-a repeated upload must match their bytes, otherwise use a new version.
+The build requires the pinned vtk-js fork linked into ``vue-components``.
+``release.sh`` installs the integrity-checked pointcloud-lod lock, rebuilds the
+actual served UMD/worker/codecs, verifies the complete dependency chain and
+writes ``dist/release-evidence.json``. Neither ``build`` nor ``verify`` uploads
+anything. ``publish`` uploads only those verified artifacts to GitHub; PyPI
+publication belongs to the workflow's isolated trusted-publisher job.
 
-To consume a release, update the application's dependency URL to the printed
-``trame-vtkjs = { url = "..." }`` entry and regenerate its lockfile. The URL
-identifies the wheel built and verified from the pinned library revisions.
+See ``RELEASING.md`` for commit rules, first-release setup, registry recovery,
+workflow permissions and the exact trusted-publisher fields.
 
 
 Running examples

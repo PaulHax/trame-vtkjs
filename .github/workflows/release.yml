@@ -1,0 +1,224 @@
+name: Build and release
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  commits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: python -m pip install -r requirements-release.txt
+      - name: Validate incoming commit messages
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            python release_plan.py lint --base "$PR_BASE" --head "$PR_HEAD"
+          elif [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != 0000000000000000000000000000000000000000 ]; then
+            python release_plan.py lint --base "$PUSH_BEFORE" --head "$GITHUB_SHA"
+          else
+            python release_plan.py lint --head "$GITHUB_SHA"
+          fi
+
+  build:
+    needs: commits
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: trame-vtkjs
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install release tools
+        working-directory: trame-vtkjs
+        run: python -m pip install build twine -r requirements-release.txt
+      - name: Plan the public version
+        id: plan
+        working-directory: trame-vtkjs
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != pull_request ] && [ "$GITHUB_REF" = refs/heads/main ]; then
+            python release_plan.py plan --output dist/release-plan.json --github-output "$GITHUB_OUTPUT"
+          else
+            echo 'release=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Read the pinned vtk-js commit
+        working-directory: trame-vtkjs
+        run: |
+          set -a
+          . ./vtkjs-fork.env
+          set +a
+          {
+            echo "VTKJS_FORK_REPO=$VTKJS_FORK_REPO"
+            echo "VTKJS_FORK_BRANCH=$VTKJS_FORK_BRANCH"
+            echo "VTKJS_FORK_COMMIT=$VTKJS_FORK_COMMIT"
+          } >> "$GITHUB_ENV"
+      - name: Build the pinned vtk-js commit
+        run: |
+          git init vtk-js
+          git -C vtk-js remote add origin "$VTKJS_FORK_REPO"
+          git -C vtk-js fetch --depth 1 origin "$VTKJS_FORK_COMMIT"
+          git -C vtk-js checkout --detach FETCH_HEAD
+          test "$(git -C vtk-js rev-parse HEAD)" = "$VTKJS_FORK_COMMIT"
+          cd vtk-js
+          npm ci
+          npm run build:esm
+          cd dist/esm
+          npm link
+      - name: Install locked browser dependencies and link vtk-js
+        working-directory: trame-vtkjs/vue-components
+        run: npm ci && npm link @kitware/vtk.js
+      - name: Browser unit tests
+        working-directory: trame-vtkjs/vue-components
+        run: npm test
+      - name: Build and verify distributions
+        working-directory: trame-vtkjs
+        env:
+          PUBLIC_VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          if [ -n "$PUBLIC_VERSION" ]; then
+            export TRAME_VTKJS_RELEASE_VERSION="$PUBLIC_VERSION"
+          fi
+          ./release.sh build
+          ./release.sh verify
+          python -m twine check dist/*.whl dist/*.tar.gz
+      - name: Install the exact wheel into a clean test environment
+        working-directory: trame-vtkjs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libosmesa6-dev xvfb
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --upgrade pip
+          /tmp/smoke/bin/pip install "$(ls dist/trame_vtkjs-*.whl)[vtk]" "vtk==9.6.0" -r tests/requirements.txt
+      - name: Python and release contract tests
+        working-directory: trame-vtkjs
+        run: |
+          xvfb-run -a /tmp/smoke/bin/python -m pytest -m "not js_oracle" \
+            --ignore=tests/push_oracle_e2e \
+            --ignore=tests/test_shared_gl_context.py \
+            --ignore=tests/test_maplibre_demo.py \
+            --ignore=tests/test_module_assets_e2e.py
+      - name: Installed-wheel browser smoke tests
+        working-directory: trame-vtkjs
+        run: |
+          /tmp/smoke/bin/playwright install --with-deps chromium
+          xvfb-run -a /tmp/smoke/bin/python -m pytest \
+            tests/test_shared_gl_context.py tests/test_module_assets_e2e.py --browser chromium -v
+      - name: Retain the tested distributions and evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ github.sha }}
+          path: trame-vtkjs/dist/
+          if-no-files-found: error
+      - name: Retain the registry preflight tool
+        uses: actions/upload-artifact@v4
+        with:
+          name: registry-tool-${{ github.sha }}
+          path: trame-vtkjs/pypi_assets.py
+          if-no-files-found: error
+
+  github-release:
+    needs: build
+    if: needs.build.outputs.release == 'true' && github.event_name != 'pull_request' && github.repository == 'PaulHax/trame-vtkjs' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.ready.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: trame-vtkjs
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: python -m pip install -r trame-vtkjs/requirements-release.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel-${{ github.sha }}
+          path: trame-vtkjs/dist/
+      - name: Recheck source, release plan and tested bytes
+        id: ready
+        working-directory: trame-vtkjs
+        env:
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          git fetch origin main --tags
+          current="$(git rev-parse origin/main)"
+          tagged="$(git rev-parse --verify "${RELEASE_TAG}^{commit}" 2>/dev/null || true)"
+          if [ "$current" != "$GITHUB_SHA" ] && [ "$tagged" != "$GITHUB_SHA" ]; then
+            echo 'A newer main commit will select the next release.'
+            echo 'publish=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python release_plan.py check --plan dist/release-plan.json
+          ./release.sh verify
+          echo 'publish=true' >> "$GITHUB_OUTPUT"
+      - name: Publish the tested GitHub artifacts
+        if: steps.ready.outputs.publish == 'true'
+        working-directory: trame-vtkjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRAME_VTKJS_RELEASE_VERSION: ${{ needs.build.outputs.version }}
+        run: ./release.sh publish
+
+  pypi:
+    needs: [build, github-release]
+    if: needs.github-release.outputs.publish == 'true' && needs.build.outputs.release == 'true' && github.event_name != 'pull_request' && github.repository == 'PaulHax/trame-vtkjs' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/trame-vtkjs
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel-${{ github.sha }}
+          path: dist/
+      - uses: actions/download-artifact@v4
+        with:
+          name: registry-tool-${{ github.sha }}
+          path: release-tools/
+      - name: Check registry immutability and stage missing files
+        id: registry
+        run: |
+          python release-tools/pypi_assets.py --evidence dist/release-evidence.json \
+            --artifacts dist --output pypi-dist --github-output "$GITHUB_OUTPUT"
+      - name: Publish the tested distributions to PyPI
+        if: steps.registry.outputs.upload == 'true'
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086
+        with:
+          packages-dir: pypi-dist/
+          skip-existing: false

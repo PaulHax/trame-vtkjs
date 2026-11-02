@@ -1,5 +1,6 @@
 build
 hatchling
+-r ../requirements-release.txt
 pytest
 pytest-asyncio
 pytest-playwright

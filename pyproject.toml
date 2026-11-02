@@ -1,7 +1,7 @@
 [project]
 name = "trame-vtkjs"
-# Version is stamped at build time (base + git short sha) by the custom
-# metadata hook in hatch_build.py. Base version lives there as BASE_VERSION.
+# hatch_build.py resolves a public release version, a source distribution's
+# preserved version, or a development version stamped with the Git revision.
 dynamic = ["version"]
 description = "vtk.js scene replication and shared-context rendering for trame"
 authors = [
@@ -51,10 +51,10 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "packaging>=24.2"]
 build-backend = "hatchling.build"
 
-# Stamps <base>+git.<short-sha> into the wheel version at build time.
+# Public releases provide TRAME_VTKJS_RELEASE_VERSION; development uses Git.
 [tool.hatch.metadata.hooks.custom]
 
 [tool.hatch.build]
@@ -69,6 +69,7 @@ include = [
 # The wheel ships every file under its `packages` (below), whatever `include`
 # says, so serve/wasm/ is limited to the offline 3D Tiles decoders.
 exclude = [
+  "/src/**/.gitignore",
   "/src/trame_vtkjs/module/serve/wasm/*",
   "!/src/trame_vtkjs/module/serve/wasm/tiles3d",
 ]
@@ -78,6 +79,21 @@ packages = [
     "src/trame_vtkjs",
     "src/trame",
 ]
+
+[tool.semantic_release]
+commit_parser = "conventional"
+tag_format = "trame-vtkjs-v{version}"
+allow_zero_version = true
+major_on_zero = false
+version_toml = []
+version_variables = []
+
+[tool.trame_vtkjs.release]
+initial_version = "0.1.0"
+baseline_commit = "ccad1d7fcde045ff05aca143e0d072b517d4b972"
+
+[tool.hatch.build.targets.sdist.force-include]
+"hatch_build.py" = "hatch_build.py"
 
 [tool.ruff]
 line-length = 88
