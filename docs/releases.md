@@ -28,9 +28,15 @@ source revision after testing.
 
 ## Publisher setup
 
-Create the repository with shipping ancestry and default branch `main`.
-Preserve the old repository's tags/assets for existing wheel URLs. Keep Actions
-disabled during staging unless the initial main push is intended to publish.
+Keep Actions disabled while seeding the new repository. Its initial `main` must
+already contain the exact `baseline_commit` configured in `pyproject.toml`,
+including the identity rename and its shipping ancestry. Open the release/docs
+PR from that baseline, and rebase only the commits after it. Rebase-merging the
+entire migration from an earlier shipping commit would rewrite the required
+baseline and prevent release planning. The initial seed therefore includes the
+identity rename; review it before authorizing that push. Preserve the old
+repository's tags/assets for existing wheel URLs. Enable Actions only when
+the release-capable merge is intended to publish.
 
 Register a PyPI [pending trusted publisher](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/)
 or update an existing project's publisher with these fields:

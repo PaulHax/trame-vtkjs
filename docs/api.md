@@ -70,8 +70,10 @@ requires a page reload.
 
 Shared views expose `registerSceneGate(hold)` and `retrySceneGate()`.
 `hold(message)` receives an in-order scene message and returns `true` to delay
-it, for example until matching video pixels arrive. Held messages keep their
-order, while unrelated updates may pass them. Call `retrySceneGate()` when the
+it, for example until matching video pixels arrive. A later message that is not
+held first releases the queued messages, then applies itself. Global sequence
+order is preserved, even if the held resources are still missing.
+Call `retrySceneGate()` when the
 resource arrives. A held message applies after three seconds even if its gate
 still holds it; request missing resources before that deadline. Snapshots are
 never held. Disposing a registration releases its held messages.

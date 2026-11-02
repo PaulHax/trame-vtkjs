@@ -30,15 +30,15 @@ From the checkout, run the interactive cone example:
 python examples/vtk/vtkjs_cone.py
 ```
 
-The [MapLibre example](examples/vtk/maplibre_demo/README.md) combines shared
+The [MapLibre example](https://github.com/PaulHax/trame-vtkjs/blob/main/examples/vtk/maplibre_demo/README.md) combines shared
 rendering, textures, editable landmarks, and streamed geometry.
 
 ## Documentation
 
-- [API and rendering contracts](docs/api.md)
-- [Build and test](docs/development.md)
-- [Releases and publisher setup](docs/releases.md)
-- [Contributing](CONTRIBUTING.md)
+- [API and rendering contracts](https://github.com/PaulHax/trame-vtkjs/blob/main/docs/api.md)
+- [Build and test](https://github.com/PaulHax/trame-vtkjs/blob/main/docs/development.md)
+- [Releases and publisher setup](https://github.com/PaulHax/trame-vtkjs/blob/main/docs/releases.md)
+- [Contributing](https://github.com/PaulHax/trame-vtkjs/blob/main/CONTRIBUTING.md)
 
-Licensed under [Apache 2.0](LICENSE), retaining Kitware's copyright and
+Licensed under [Apache 2.0](https://github.com/PaulHax/trame-vtkjs/blob/main/LICENSE), retaining Kitware's copyright and
 attribution. Maintained by Paul Elliott.
