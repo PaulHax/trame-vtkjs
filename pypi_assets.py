@@ -106,7 +106,7 @@ def candidates(evidence: Path, artifacts: Path) -> tuple[str, dict[str, str]]:
             raise PreflightError(f"{name} differs from the tested release evidence")
         check_distribution(path, kind, version)
         digests[name] = digest
-    allowed = {*digests, evidence.name}
+    allowed = {*digests, evidence.name, "release-plan.json"}
     if any(
         path.name not in allowed or not path.is_file() for path in artifacts.iterdir()
     ):

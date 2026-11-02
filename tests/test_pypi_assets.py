@@ -101,6 +101,17 @@ def test_new_release_stages_exact_tested_wheel_and_sdist(release):
         ).read_bytes()
 
 
+def test_release_plan_is_retained_as_metadata_and_never_staged(release):
+    (release.artifacts / "release-plan.json").write_text(
+        json.dumps({"version": VERSION, "tag": f"trame-vtkjs-v{VERSION}"})
+    )
+    assert stage(release)["files"] == [WHEEL, SDIST]
+    assert sorted(path.name for path in release.output.iterdir()) == sorted(
+        [WHEEL, SDIST]
+    )
+    assert (release.artifacts / "release-plan.json").is_file()
+
+
 def test_identical_existing_release_needs_no_upload(release, monkeypatch):
     release.remote = published(release, "wheel", "sdist")
     monkeypatch.setattr(
