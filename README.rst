@@ -198,7 +198,7 @@ relying on it. Snapshots are never held.
 The registration disposer releases anything the gate held.
 
 PointGaussianMapper support
---------------------------
+---------------------------
 
 The vtk.js backend implements only simple points. Python callers must explicitly
 call ``mapper.SetScaleFactor(0)``. Nonzero scale factors, anisotropy, Gaussian
@@ -228,7 +228,7 @@ for a later retry.
 
 
 MapLibre shared-context example
-------------------------------
+-------------------------------
 
 ``examples/vtk/maplibre_vtkjs.py`` exercises shared MapLibre rendering,
 three renderer layers, delayed projected textures, screen-sized pickable
