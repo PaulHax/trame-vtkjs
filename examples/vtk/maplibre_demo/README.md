@@ -11,7 +11,7 @@ The default basemap is OpenFreeMap Positron, with dark and blank options. Use
 
 From the trame-vtkjs checkout, with its VTK and trame dependencies installed:
 
-    PYTHONPATH="$PWD/src" python examples/vtk/maplibre_vtkjs.py --server
+    python examples/vtk/maplibre_vtkjs.py --server
 
 The browser loads pinned MapLibre 5.16.0 and gl-matrix 3.4.3 from unpkg. For an
 offline run, place maplibre-gl.js, maplibre-gl.css and gl-matrix-min.js in a
@@ -79,12 +79,11 @@ test dependencies available:
 
 ```sh
 TRAME_MAPLIBRE_DEMO_VENDOR=/absolute/path/to/vendor \
-  PYTHONPATH="$PWD/src:$PWD/tests" \
   python -m pytest -q tests/test_maplibre_demo.py
 ```
 
-The test runs headless. It verifies the served UMD matches the checkout's built
-file; both streams submit; both projected planes paint the expected pixels;
+The test runs headless against the installed package. It verifies the served UMD
+matches the installed bundle; both streams submit; both projected planes paint the expected pixels;
 delayed geometry waits for its texture; replacement/edit and removal/re-add
 preserve client array bytes; both views commit drags at the released position;
 cloud picking, correction transforms, style reload and reconnect work. Additional

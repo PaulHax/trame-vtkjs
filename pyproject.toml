@@ -13,7 +13,7 @@ dependencies = [
     "trame-common",
 ]
 requires-python = ">=3.9"
-readme = "README.rst"
+readme = "README.md"
 license = {text = "Apache Software License"}
 keywords = ["Python", "Interactive", "Web", "Application", "Framework"]
 classifiers = [
@@ -59,6 +59,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build]
 include = [
+  "/CONTRIBUTING.md",
+  "/docs/**/*.md",
   "/src/trame_vtkjs/**/*.py",
   "/src/trame_vtkjs/py.typed",
   # Ship the vtk.js bundle plus the offline 3D Tiles decode runtime.

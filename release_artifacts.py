@@ -143,7 +143,7 @@ def sdist_contents(path: Path, version: str) -> tuple[str, dict[str, bytes]]:
         archived_version = metadata(
             archive.extractfile(candidates[0]).read(), "sdist metadata"
         )
-        for required in ("hatch_build.py", "pyproject.toml", "README.rst", "LICENSE"):
+        for required in ("hatch_build.py", "pyproject.toml", "README.md", "LICENSE"):
             if prefix + required not in names:
                 raise ArtifactError(f"sdist is missing {required}")
         source_prefix = prefix + "src/"

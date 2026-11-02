@@ -108,6 +108,7 @@ def wheel_contents(path):
             name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
         )
         metadata = Parser().parsestr(archive.read(metadata_name).decode())
+        assert metadata["Description-Content-Type"] == "text/markdown"
         runtime = {
             name: archive.read(name)
             for name in archive.namelist()
@@ -122,7 +123,7 @@ def test_sdist_rebuild_preserves_version_and_offline_runtime_without_git(
 ):
     source = tmp_path / "source"
     source.mkdir()
-    for name in ("pyproject.toml", "hatch_build.py", "README.rst", "LICENSE"):
+    for name in ("pyproject.toml", "hatch_build.py", "README.md", "LICENSE"):
         shutil.copyfile(ROOT / name, source / name)
     shutil.copytree(
         ROOT / "src", source / "src", ignore=shutil.ignore_patterns("__pycache__")
@@ -146,7 +147,7 @@ def test_sdist_rebuild_preserves_version_and_offline_runtime_without_git(
             "hatch_build.py",
             "pyproject.toml",
             "LICENSE",
-            "README.rst",
+            "README.md",
             "PKG-INFO",
         ):
             assert any(name.endswith("/" + required) for name in names)

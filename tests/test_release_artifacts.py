@@ -80,7 +80,7 @@ def make_artifacts(directory, version="0.2.3"):
                 for name in (
                     "hatch_build.py",
                     "pyproject.toml",
-                    "README.rst",
+                    "README.md",
                     "LICENSE",
                 )
             },

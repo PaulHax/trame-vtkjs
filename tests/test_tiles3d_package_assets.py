@@ -33,7 +33,7 @@ def test_offline_tiles3d_runtime_is_staged_and_selected_for_wheel(tmp_path):
     # Anything else a checkout holds under serve/wasm/ must stay out.
     stray = serve / "wasm" / "stale-runtime"
     stray.mkdir(exist_ok=True)
-    (stray / "vtkWebAssembly.wasm").write_bytes(b"\0asm")
+    (stray / "unpackaged.bin").write_bytes(b"unpackaged runtime")
     try:
         subprocess.run(
             [
