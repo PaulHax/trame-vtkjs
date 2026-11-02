@@ -9,7 +9,7 @@ The server generates a tiny cloud and textured mesh in a temporary directory.
 The default basemap is OpenFreeMap Positron, with dark and blank options. Use
 `?basemap=blank` to run without an external basemap service.
 
-From the trame-vtklocal checkout, with its VTK and trame dependencies installed:
+From the trame-vtkjs checkout, with its VTK and trame dependencies installed:
 
     PYTHONPATH="$PWD/src" python examples/vtk/maplibre_vtkjs.py --server
 

@@ -22,7 +22,7 @@ from vtkmodules.util.numpy_support import numpy_to_vtk
 # session imports.
 from vtkmodules.vtkRenderingOpenGL2 import vtkOpenGLRenderer  # noqa: F401
 
-from trame_vtklocal.module.protocol import ObjectManagerAPI
+from trame_vtkjs.module.protocol import ObjectManagerAPI
 
 
 @dataclass

@@ -64,9 +64,9 @@ export default {
   build: {
     lib: {
       entry: "./src/main.js",
-      name: "trame_vtklocal",
+      name: "trame_vtkjs",
       formats: ["umd"],
-      fileName: "trame_vtklocal",
+      fileName: "trame_vtkjs",
     },
     rollupOptions: {
       external: ["vue"],
@@ -76,7 +76,7 @@ export default {
         },
       },
     },
-    outDir: "../src/trame_vtklocal/module/serve/js",
+    outDir: "../src/trame_vtkjs/module/serve/js",
     assetsDir: ".",
   },
 };

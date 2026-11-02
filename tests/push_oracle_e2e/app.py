@@ -194,7 +194,7 @@ class OracleApp:
         self.server.enable_module({"scripts": scripts})
 
         if self.view == "shared":
-            from trame_vtklocal.widgets import VtkJsSharedView
+            from trame_vtkjs.widgets import VtkJsSharedView
 
             with DivLayout(self.server):
                 client.Style("body { margin: 0; }")
@@ -210,7 +210,7 @@ class OracleApp:
                     on_ready="window.initSharedContext?.()",
                 )
         else:
-            from trame_vtklocal.widgets import VtkJsLocalView
+            from trame_vtkjs.widgets import VtkJsLocalView
 
             with DivLayout(self.server):
                 client.Style("body { margin: 0; }")

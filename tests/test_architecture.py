@@ -11,7 +11,7 @@ import ast
 from pathlib import Path
 
 
-SRC_ROOT = Path(__file__).resolve().parent.parent / "src" / "trame_vtklocal"
+SRC_ROOT = Path(__file__).resolve().parent.parent / "src" / "trame_vtkjs"
 
 
 def _iter_python_files(directory: Path):
@@ -58,7 +58,7 @@ def test_module_subpackage_does_not_import_widgets():
     bad = []
     for path in _iter_python_files(SRC_ROOT / "module"):
         for lineno, name in _imported_modules(path):
-            if name.startswith("trame_vtklocal.widgets"):
+            if name.startswith("trame_vtkjs.widgets"):
                 bad.append(f"{path.relative_to(SRC_ROOT.parent)}:{lineno}: {name}")
 
     assert not bad, (
@@ -86,7 +86,7 @@ SIZE_BUDGETS = {
 
 
 def test_source_files_under_line_budget():
-    """Every .py file under src/trame_vtklocal/ stays under its line budget.
+    """Every .py file under src/trame_vtkjs/ stays under its line budget.
 
     Default budget is DEFAULT_LINE_BUDGET. SIZE_BUDGETS lists per-file
     exceptions for files currently over the default — each is a named
@@ -125,8 +125,8 @@ def test_store_stays_a_vtk_free_leaf():
     bad = [
         f"{path.name}:{lineno}: {name}"
         for lineno, name in _imported_modules(path)
-        if name.startswith(("trame_vtklocal.", "vtk"))
-        and name != "trame_vtklocal.store"
+        if name.startswith(("trame_vtkjs.", "vtk"))
+        and name != "trame_vtkjs.store"
     ]
     assert not bad, (
         "store.py must remain a VTK-free leaf (no in-package imports). "

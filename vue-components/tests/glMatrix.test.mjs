@@ -27,9 +27,9 @@ test("exports the gl-matrix mat4/vec3 helpers used by the map camera math", () =
   }
 });
 
-test("publishes { mat4, vec3 } on the shared trameVtklocal namespace", () => {
-  const ns = globalThis.trameVtklocal;
-  assert.ok(ns && ns.glMatrix, "window.trameVtklocal.glMatrix is set");
+test("publishes { mat4, vec3 } on the shared trameVtkjs namespace", () => {
+  const ns = globalThis.trameVtkjs;
+  assert.ok(ns && ns.glMatrix, "window.trameVtkjs.glMatrix is set");
   assert.equal(ns.glMatrix.mat4, mat4);
   assert.equal(ns.glMatrix.vec3, vec3);
 });

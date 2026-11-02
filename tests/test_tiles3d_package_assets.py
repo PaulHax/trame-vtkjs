@@ -7,9 +7,9 @@ from zipfile import ZipFile
 
 def test_offline_tiles3d_runtime_is_staged_and_selected_for_wheel(tmp_path):
     root = Path(__file__).resolve().parents[1]
-    serve = root / "src" / "trame_vtklocal" / "module" / "serve"
+    serve = root / "src" / "trame_vtkjs" / "module" / "serve"
     required = {
-        "js/trame_vtklocal.umd.js",
+        "js/trame_vtkjs.umd.js",
         "js/tiles3dDecodeWorker.classic.js",
         "wasm/tiles3d/draco_wasm_wrapper.js",
         "wasm/tiles3d/draco_decoder.wasm",
@@ -55,7 +55,7 @@ def test_offline_tiles3d_runtime_is_staged_and_selected_for_wheel(tmp_path):
     wheel = next(tmp_path.glob("*.whl"))
     with ZipFile(wheel) as archive:
         names = set(archive.namelist())
-    prefix = "trame_vtklocal/module/serve/"
+    prefix = "trame_vtkjs/module/serve/"
     assert {prefix + relative for relative in required} <= names
     assert {name for name in names if name.startswith(prefix + "wasm/")} == {
         prefix + relative for relative in required if relative.startswith("wasm/")

@@ -1,8 +1,8 @@
 // Re-export gl-matrix's `mat4`/`vec3` from the copy vtk.js already bundles, and
-// publish them on the shared `window.trameVtklocal` namespace (the same place
+// publish them on the shared `window.trameVtkjs` namespace (the same place
 // the view registry lives). Modules that load the fork bundle but are served
 // separately — notably the map's vanilla `map_init.js`, which has no build step
-// — reach gl-matrix via `window.trameVtklocal.glMatrix` instead of hand-rolling
+// — reach gl-matrix via `window.trameVtkjs.glMatrix` instead of hand-rolling
 // targetTo / invert / multiply. The bare "gl-matrix" import resolves to vtk.js's
 // dependency through the build + test alias, so no new package is added.
 //
@@ -17,4 +17,4 @@ import { mat4, vec3 } from "gl-matrix";
 export { mat4, vec3 };
 
 // Attach `{ mat4, vec3 }` alongside the view registry without clobbering it.
-(globalThis.trameVtklocal ??= {}).glMatrix = { mat4, vec3 };
+(globalThis.trameVtkjs ??= {}).glMatrix = { mat4, vec3 };

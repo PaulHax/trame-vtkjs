@@ -28,9 +28,9 @@ from vtkmodules.vtkRenderingCore import (
 # without this Render() segfaults when this module runs on its own.
 from vtkmodules.vtkRenderingOpenGL2 import vtkOpenGLRenderer  # noqa: F401
 
-from trame_vtklocal.module.node_translator import translate_scene
-from trame_vtklocal.module.protocol import ObjectManagerAPI
-from trame_vtklocal.widgets.blob_payloads import resolve_ref_payload
+from trame_vtkjs.module.node_translator import translate_scene
+from trame_vtkjs.module.protocol import ObjectManagerAPI
+from trame_vtkjs.widgets.blob_payloads import resolve_ref_payload
 
 POSITIONS = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]], dtype=np.float32)
 # Full-range channels straddling the signed-byte midpoint (0/127/128/255).
@@ -192,7 +192,7 @@ def test_actor_carries_the_user_matrix():
     ],
 )
 def test_gaussian_requests_fail_during_scene_translation(setting, value):
-    from trame_vtklocal.module.point_gaussian import validate_simple_points
+    from trame_vtkjs.module.point_gaussian import validate_simple_points
 
     _nodes, handles = _point_cloud_scene()
     mapper = handles["mapper"]

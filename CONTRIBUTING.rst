@@ -1,5 +1,5 @@
 ==============================
-Contributing to trame-vtklocal
+Contributing to trame-vtkjs
 ==============================
 
 #. Clone the repository using ``git clone``

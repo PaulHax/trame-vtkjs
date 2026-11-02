@@ -1,43 +1,43 @@
-name: Publish Fork Wheel
+name: Build and Publish Wheel
 
-# On every push to this fork's `shared-context` branch, build the wheel, test
-# that exact wheel, and publish it as a GitHub prerelease so a downstream app
-# can pin it by URL (`releases/download/<tag>/…whl`).
+# Build and test pull requests and main pushes with read-only contents access.
+# Main publishes the exact tested wheel from a separate write-enabled job,
+# allowing downstream apps to pin an immutable release URL.
 #
 # The wheel embeds a UMD bundle built against the vtk-js fork
 # (PaulHax/vtk-js), the build that carries `ExternalContextRenderWindow` and
-# `vtkPointGaussianMapper`. "shared-context" below always refers to this repo's
-# own branch and wheel-version label, never to a vtk-js branch.
+# `vtkPointGaussianMapper`. The wheel version records the bridge source commit.
 #
-# Every input is immutable. vtk-js is fetched by COMMIT — the sha in
-# `vtkjs-fork.env`, the single place it is written — because a branch moves and
-# would let the same release command produce different wheels. pointcloud-lod
-# comes from `npm ci`, i.e. the integrity-checked tarball in the lockfile, not a
+# Every input is immutable. vtk-js is fetched by the commit in
+# `vtkjs-fork.env` because a branch moves and could produce different wheels.
+# pointcloud-lod comes from the integrity-checked lockfile tarball, not a
 # dev link. `verify_chain.py` re-proves all of that from the built bundle and
 # fails the job when anything drifted, and the resulting build-info.json ships
 # inside the wheel.
 #
 # This reuses `release.sh`, the same script devs run locally, so version
 # stamping, chain verification, the UMD byte-assert, the tag scheme
-# (`v<base>-shared-context.<sha>`) and release creation live in ONE place.
+# (`v<base>-git.<sha>`) and release creation live in ONE place.
 # `release.sh build` builds the wheel once; `release.sh publish` uploads that
 # same wheel after checking its evidence names HEAD and the wheel's sha256.
 
 on:
+  pull_request:
+    branches: [main]
   push:
-    branches: [shared-context]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          path: trame-vtklocal
+          path: trame-vtkjs
 
       - uses: actions/setup-node@v4
         with:
@@ -48,7 +48,7 @@ jobs:
           python-version: '3.10'
 
       - name: Read the pinned vtk-js commit
-        working-directory: trame-vtklocal
+        working-directory: trame-vtkjs
         run: |
           set -a
           . ./vtkjs-fork.env
@@ -77,36 +77,35 @@ jobs:
           cd dist/esm && npm link
 
       - name: Install vue-components deps and link the fork vtk-js
-        working-directory: trame-vtklocal/vue-components
+        working-directory: trame-vtkjs/vue-components
         # `npm ci` installs pointcloud-lod from the lockfile's integrity-checked
         # tarball (never a dev link) and wipes node_modules but keeps the global
         # link, so link after it. release.sh runs the actual `npm run build`.
         run: npm ci && npm link @kitware/vtk.js
 
       - name: Vue component tests from the clean install
-        working-directory: trame-vtklocal/vue-components
+        working-directory: trame-vtkjs/vue-components
         run: npm test
 
       - name: Build + verify the chain (no publish)
-        working-directory: trame-vtklocal
+        working-directory: trame-vtkjs
         run: |
           pip install build
           ./release.sh build
 
       - name: Install the built wheel into a clean venv
-        working-directory: trame-vtklocal
-        # OSMesa backs the server-side VTK render window; xvfb + a headed
-        # Chromium give the client a real WebGL context, which is what the
-        # shared-context path actually renders through.
+        working-directory: trame-vtkjs
+        # OSMesa and xvfb support the server-side VTK render window.
+        # Browser correctness tests run headless.
         run: |
           sudo apt-get update
           sudo apt-get install -y libosmesa6-dev xvfb
           python -m venv /tmp/smoke
           /tmp/smoke/bin/pip install --upgrade pip
-          /tmp/smoke/bin/pip install "$(ls dist/trame_vtklocal-*.whl)[vtk]" "vtk==9.6.0" -r tests/requirements.txt
+          /tmp/smoke/bin/pip install "$(ls dist/trame_vtkjs-*.whl)[vtk]" "vtk==9.6.0" -r tests/requirements.txt
 
       - name: Python unit tests against the installed wheel
-        working-directory: trame-vtklocal
+        working-directory: trame-vtkjs
         # pytest puts the checkout root, not src/, on the path, so the package
         # under test is the installed wheel. Browser-backed suites are left
         # out here; the shared-GL smoke test runs next.
@@ -114,28 +113,56 @@ jobs:
           xvfb-run -a /tmp/smoke/bin/python -m pytest -m "not js_oracle" \
             --ignore=tests/push_oracle_e2e \
             --ignore=tests/test_shared_gl_context.py \
-            --ignore=tests/test_maplibre_demo.py
+            --ignore=tests/test_maplibre_demo.py \
+            --ignore=tests/test_module_assets_e2e.py
 
       - name: Trame browser smoke tests from the installed wheel
-        working-directory: trame-vtklocal
+        working-directory: trame-vtkjs
         run: |
           /tmp/smoke/bin/playwright install --with-deps chromium
-          xvfb-run -a /tmp/smoke/bin/python -m pytest tests/test_shared_gl_context.py -v \
-            --browser chromium --headed
+          xvfb-run -a /tmp/smoke/bin/python -m pytest tests/test_shared_gl_context.py tests/test_module_assets_e2e.py -v \
+            --browser chromium
 
-      - name: Publish the tested fork wheel
-        working-directory: trame-vtklocal
+      - name: Retain the tested wheel and release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ github.sha }}
+          path: trame-vtkjs/dist/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: github.event_name != 'pull_request' && github.repository == 'PaulHax/trame-vtkjs' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: trame-vtkjs
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel-${{ github.sha }}
+          path: trame-vtkjs/dist/
+
+      - name: Publish the tested wheel
+        working-directory: trame-vtkjs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
           ./release.sh publish | tee /tmp/release.out
           {
-            echo '### Fork wheel published :package:'
+            echo '### Wheel published :package:'
             echo
             echo 'Pin in the app `pyproject.toml`:'
             echo '```toml'
-            grep -m1 'trame-vtklocal = {' /tmp/release.out || true
+            grep -m1 'trame-vtkjs = {' /tmp/release.out || true
             echo '```'
             echo
             echo 'Embedded chain:'

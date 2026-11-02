@@ -6,14 +6,14 @@
 // `getView(key)`) instead of unwrapping the Vue component ref through
 // `$.exposed`/`$.setupState` and polling with a `setTimeout` for mount timing.
 //
-// The store lives on the global object (`window.trameVtklocal`) so every module
+// The store lives on the global object (`window.trameVtkjs`) so every module
 // that loads the fork bundle — including app code served separately — shares one
 // registry instance.
 
-const ns = (globalThis.trameVtklocal ??= {});
+const ns = (globalThis.trameVtkjs ??= {});
 ns.views ??= new Map();
 ns.waiters ??= new Map();
-// Public helpers on the namespace so consumers only touch window.trameVtklocal.
+// Public helpers on the namespace so consumers only touch window.trameVtkjs.
 ns.whenView = whenView;
 ns.getView = getView;
 

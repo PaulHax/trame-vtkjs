@@ -2,9 +2,9 @@
 
 import pytest
 
-from trame_vtklocal.module import interaction as pick
-from trame_vtklocal.module.protocol import ObjectManagerAPI
-from trame_vtklocal.module.node_translator import translate_scene
+from trame_vtkjs import interaction as pick
+from trame_vtkjs.module.protocol import ObjectManagerAPI
+from trame_vtkjs.module.node_translator import translate_scene
 
 
 def _make_scene():

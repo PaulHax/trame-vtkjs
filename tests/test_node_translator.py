@@ -26,14 +26,14 @@ from push_oracle.scenes import (
     make_map_drape_scene,
     make_two_stage_pipeline_scene,
 )
-from trame_vtklocal.module.vtkjs_translator import map_class_name
-from trame_vtklocal.module import interaction as pick
-from trame_vtklocal.module import projected_texture as ptx
-from trame_vtklocal.module.screen_size_glyphs import mark_screen_size_glyphs
-from trame_vtklocal.module.node_translator import translate_object, translate_scene
-from trame_vtklocal.module.array_datatypes import js_datatype
-from trame_vtklocal.store import SceneStore, ref_manager_hashes
-from trame_vtklocal.widgets.blob_payloads import (
+from trame_vtkjs.module.vtkjs_translator import map_class_name
+from trame_vtkjs import interaction as pick
+from trame_vtkjs import projected_texture as ptx
+from trame_vtkjs.screen_size_glyphs import mark_screen_size_glyphs
+from trame_vtkjs.module.node_translator import translate_object, translate_scene
+from trame_vtkjs.module.array_datatypes import js_datatype
+from trame_vtkjs.store import SceneStore, ref_manager_hashes
+from trame_vtkjs.widgets.blob_payloads import (
     pack_cell_array_payload,
     resolve_ref_payload,
 )
@@ -471,7 +471,7 @@ def test_image_and_volume_mappers_do_not_receive_line_depth_offsets():
     from vtkmodules.vtkRenderingCore import vtkImageSliceMapper, vtkPolyDataMapper
     from vtkmodules.vtkRenderingVolumeOpenGL2 import vtkSmartVolumeMapper
 
-    from trame_vtklocal.module.protocol import ObjectManagerAPI
+    from trame_vtkjs.module.protocol import ObjectManagerAPI
 
     polygon_mapper = vtkPolyDataMapper()
     polygon_mapper.SetResolveCoincidentTopologyToPolygonOffset()

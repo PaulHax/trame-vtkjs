@@ -10,7 +10,7 @@ import asyncio
 from trame.app import asynchronous, get_server
 from trame.ui.html import DivLayout
 from trame.widgets import client, html
-from trame_vtklocal.widgets import VtkJsLocalView
+from trame_vtkjs.widgets import VtkJsLocalView
 
 from vtkmodules.vtkCommonCore import vtkPoints
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData

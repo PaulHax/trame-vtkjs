@@ -16,7 +16,7 @@ from push_oracle.harness import (
     start_retention,
     touch_point,
 )
-from trame_vtklocal.module.node_translator import translate_scene
+from trame_vtkjs.module.node_translator import translate_scene
 
 
 def canonical(nodes, blob):

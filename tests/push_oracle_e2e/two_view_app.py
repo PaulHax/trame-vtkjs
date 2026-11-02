@@ -58,7 +58,7 @@ class TwoViewOracleApp:
             self._render_windows[name] = rw
 
     def _build_ui(self):
-        from trame_vtklocal.widgets import VtkJsLocalView, VtkJsSharedView
+        from trame_vtkjs.widgets import VtkJsLocalView, VtkJsSharedView
 
         page_setup_js = _read_page_setup_js()
         scripts = [

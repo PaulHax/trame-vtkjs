@@ -26,10 +26,10 @@ from push_oracle.scenes import (
     make_points_cloud_scene,
     make_quad_scene,
 )
-from trame_vtklocal.store import ref_manager_hashes
-from trame_vtklocal.widgets import hot_arrays
-from trame_vtklocal.widgets.hot_arrays import SMALL_REWRITE_BYTES, live_dataset_array
-from trame_vtklocal.widgets.publisher import (
+from trame_vtkjs.store import ref_manager_hashes
+from trame_vtkjs.widgets import hot_arrays
+from trame_vtkjs.widgets.hot_arrays import SMALL_REWRITE_BYTES, live_dataset_array
+from trame_vtkjs.widgets.publisher import (
     OPS_TOPIC,
     ScenePublisher,
     event_is_current,

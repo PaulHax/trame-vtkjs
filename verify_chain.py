@@ -2,7 +2,7 @@
 """Prove the UMD bundle about to ship was built from the pinned dependency chain.
 
 The wheel is a black box once built: nothing inside a minified bundle says which
-vtk.js it came from, and every link in the chain can silently float — a moving
+vtk.js it came from, and every link in the chain can silently float: a moving
 fork branch, a dev symlink standing in for a released package, a released
 ``@kitware/vtk.js`` that has no ``vtkPointGaussianMapper`` at all. Each check
 below turns one of those silent substitutions into a failed release.
@@ -30,7 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 PIN_FILE = ROOT / "vtkjs-fork.env"
 VUE = ROOT / "vue-components"
-STREAMED_SCENE_PY = ROOT / "src" / "trame_vtklocal" / "streamed_scene.py"
+STREAMED_SCENE_PY = ROOT / "src" / "trame_vtkjs" / "streamed_scene.py"
 
 # The bundle is minified, so class names are mangled but the strings vtk.js
 # registers itself with survive verbatim. Quote style differs per bundler
@@ -69,12 +69,21 @@ def git_output(cwd: Path, *args: str) -> str | None:
     return out.decode().strip() or None
 
 
+def bridge_source() -> dict:
+    """Record whether the source is reproducible from its Git commit."""
+    return {
+        "commit": git_output(ROOT, "rev-parse", "HEAD"),
+        "tree": git_output(ROOT, "rev-parse", "HEAD^{tree}"),
+        "dirty": bool(git_output(ROOT, "status", "--porcelain", "--untracked-files=all")),
+    }
+
+
 def check_vtkjs(pin: dict) -> dict:
     """The linked @kitware/vtk.js must be a checkout of the pinned commit."""
     link = VUE / "node_modules" / "@kitware" / "vtk.js"
     if not link.exists():
         die(
-            f"{link} is missing — link the fork build:\n"
+            f"{link} is missing: link the fork build:\n"
             f"    git clone {pin['VTKJS_FORK_REPO']} && cd vtk-js\n"
             f"    git checkout {pin['VTKJS_FORK_COMMIT']}\n"
             "    npm ci && npm run build:esm && cd dist/esm && npm link\n"
@@ -111,7 +120,7 @@ def check_pointcloud_lod() -> dict:
     """pointcloud-lod must come from the lockfile, not from a dev symlink."""
     installed = VUE / "node_modules" / "pointcloud-lod"
     if not installed.exists():
-        die(f"{installed} is missing — run `npm ci` in vue-components")
+        die(f"{installed} is missing: run `npm ci` in vue-components")
     if installed.is_symlink():
         die(
             f"{installed} is a symlink to a working copy, so the wheel would "
@@ -155,7 +164,7 @@ def check_pointcloud_lod() -> dict:
     if entry.get("version") != version:
         die(
             f"installed pointcloud-lod {version} != locked {entry.get('version')} "
-            "— run `npm ci` in vue-components"
+            "- run `npm ci` in vue-components"
         )
     return {
         "version": version,
@@ -194,7 +203,7 @@ def check_adaptive_floor() -> dict:
     ``PointCloudSource`` rejects a ``max_budget`` below the floor, but Python
     cannot import the number the JS validator enforces, so it holds a copy.
     The library publishes ``ADAPTIVE_QUALITY_DEFAULTS.minBudget`` from its
-    vtk-free entry precisely so hosts read the floor instead of restating it —
+    vtk-free entry precisely so hosts read the floor instead of restating it;
     read it here, or a policy change leaves the two validators disagreeing
     about which configurations are legal.
 
@@ -290,7 +299,7 @@ def check_bundle(umd: Path) -> dict:
         # Both come from the Geometry profile; absent it, no override registers.
         "vtkOpenGLPolyDataMapper": registers("vtkOpenGLPolyDataMapper"),
         "vtkOpenGLActor": registers("vtkOpenGLActor"),
-        # worldSize is the fork's world-space point sizing — the feature the
+        # worldSize is the fork's world-space point sizing: the feature the
         # pinned commit adds, so its presence proves the fork build was used.
         "worldSize": re.search(
             rf"{QUOTE}pointSizeScale{QUOTE}\s*,\s*{QUOTE}circle{QUOTE}"
@@ -328,6 +337,7 @@ def main() -> None:
 
     build_info = {
         "bridgeCommit": git_output(ROOT, "rev-parse", "HEAD"),
+        "bridgeSource": bridge_source(),
         "vtkjs": vtkjs,
         "pointcloudLod": {**pointcloud_lod, **adaptive},
         "bundle": bundle,

@@ -6,14 +6,14 @@ import numpy as np
 import vtk
 from vtkmodules.util.numpy_support import numpy_to_vtk
 
-from trame_vtklocal import PointCloudSource, StreamedSceneActor, Tiles3DSource
-from trame_vtklocal.module.interaction import make_pickable
-from trame_vtklocal.module.point_cloud_presentation import mark_point_cloud_presentation
-from trame_vtklocal.module.projected_texture import (
+from trame_vtkjs import PointCloudSource, StreamedSceneActor, Tiles3DSource
+from trame_vtkjs.interaction import make_pickable
+from trame_vtkjs.module.point_cloud_presentation import mark_point_cloud_presentation
+from trame_vtkjs.projected_texture import (
     mark_projected_texture,
     set_projected_texture_matrix,
 )
-from trame_vtklocal.module.screen_size_glyphs import mark_screen_size_glyphs
+from trame_vtkjs.screen_size_glyphs import mark_screen_size_glyphs
 
 from .fixtures import IDENTITY
 

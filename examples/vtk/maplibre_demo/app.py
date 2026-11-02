@@ -15,7 +15,7 @@ from trame.app import get_server
 from trame.ui.vuetify3 import SinglePageLayout
 from trame.widgets import html, client, vuetify3
 
-from trame_vtklocal.widgets import VtkJsLocalView, VtkJsSharedView
+from trame_vtkjs.widgets import VtkJsLocalView, VtkJsSharedView
 from .fixtures import write_assets
 from .scene import DemoScene
 from .interaction import drag_point

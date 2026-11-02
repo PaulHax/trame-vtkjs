@@ -3,7 +3,7 @@
 from trame.app import get_server
 from trame.ui.html import DivLayout
 from trame.widgets import html
-from trame_vtklocal.widgets import VtkJsLocalView
+from trame_vtkjs.widgets import VtkJsLocalView
 from trame.decorators import TrameApp, change
 
 from vtkmodules.vtkFiltersSources import vtkConeSource

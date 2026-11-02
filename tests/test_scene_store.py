@@ -12,7 +12,7 @@ import pytest
 
 from push_oracle.reference import apply_ops
 
-from trame_vtklocal.store import SceneStore
+from trame_vtkjs.store import SceneStore
 
 RW = "1"
 

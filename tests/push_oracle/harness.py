@@ -8,9 +8,9 @@ import copy
 import numpy as np
 
 from push_oracle.reference import apply_ops
-from trame_vtklocal.widgets import publisher as publisher_module
-from trame_vtklocal.widgets.hot_arrays import JS_ARRAY_DTYPE_MAP
-from trame_vtklocal.widgets.publisher import ScenePublisher
+from trame_vtkjs.widgets import publisher as publisher_module
+from trame_vtkjs.widgets.hot_arrays import JS_ARRAY_DTYPE_MAP
+from trame_vtkjs.widgets.publisher import ScenePublisher
 
 
 class FakeProtocol:

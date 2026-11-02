@@ -4,7 +4,7 @@ import asyncio
 
 from trame.app import get_server, asynchronous
 from trame.ui.html import DivLayout
-from trame_vtklocal.widgets import VtkJsLocalView
+from trame_vtkjs.widgets import VtkJsLocalView
 
 from vtkmodules.vtkFiltersSources import vtkSphereSource
 from vtkmodules.vtkRenderingCore import (

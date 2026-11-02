@@ -28,8 +28,7 @@ def demo_server(xprocess):
         assert (Path(vendor) / name).is_file(), f"Missing {name} in {vendor}"
     helper = FixtureHelper(ROOT)
     name, starter, monitor = helper.get_xprocess_args("examples/vtk/maplibre_vtkjs.py")
-    # xprocess changes cwd; a relative PYTHONPATH would silently test an installed wheel.
-    starter.env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
+    starter.env = dict(os.environ)
     logfile = xprocess.ensure(name, starter)
     try:
         yield f"http://127.0.0.1:{monitor(logfile[1]).port}"
@@ -84,9 +83,11 @@ def wait_streamed(page):
 def test_feature_demo_lifecycle_and_frames(demo_server, page):
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
-    with page.expect_response(lambda r: "trame_vtklocal.umd.js" in r.url) as served:
+    with page.expect_response(lambda r: "trame_vtkjs.umd.js" in r.url) as served:
         page.goto(demo_server + "?basemap=blank")
-    bundle = ROOT / "src/trame_vtklocal/module/serve/js/trame_vtklocal.umd.js"
+    from trame_vtkjs import module
+
+    bundle = Path(module.__file__).parent / "serve/js/trame_vtkjs.umd.js"
     assert (
         hashlib.sha256(served.value.body()).digest()
         == hashlib.sha256(bundle.read_bytes()).digest()

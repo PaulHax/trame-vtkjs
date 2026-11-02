@@ -1,6 +1,5 @@
-.. |pypi_download| image:: https://img.shields.io/pypi/dm/trame-vtklocal
-
-trame-vtklocal  |pypi_download|
+trame-vtkjs
+===========
 
 Local rendering for trame: a server-side ``vtkRenderWindow`` is published as a
 flat scene and drawn in the browser with vtk.js, either on the view's own canvas
@@ -11,19 +10,62 @@ and interaction.
 License
 ----------------------------------------
 
-This library is OpenSource and follow the Apache Software License
+This project is licensed under Apache 2.0. It preserves the Kitware copyright
+and attribution in ``LICENSE`` and the useful development history of the
+vtk.js bridge. It is maintained independently from Kitware's trame-vtklocal,
+which is a different product built around VTK WASM.
 
 Installation
 ----------------------------------------
 
+Install a wheel built from this repository, either from its GitHub releases or
+from ``dist/`` after a local build. The distribution is ``trame-vtkjs`` and the
+Python import namespace is ``trame_vtkjs``. The browser client is packaged in
+the same wheel; there is no separate npm release to install.
+
 .. code-block:: console
 
-    # to install a compatible version of VTK
-    pip install "trame-vtklocal[vtk]"
+    python -m pip install "dist/trame_vtkjs-<version>-py3-none-any.whl[vtk]"
 
-    # to install VTK yourself
-    pip install trame-vtklocal
-    pip install "vtk>=9.6,<9.7"
+The ``vtk`` extra selects the supported VTK 9.6 series. VTK 9.7 needs separate
+scene reconciliation qualification. A Python package index release is not
+configured; use the wheel rather than installing an unrelated package.
+
+Public Python API
+----------------------------------------
+
+.. code-block:: python
+
+    from trame.widgets.vtkjs import VtkJsLocalView, VtkJsSharedView
+    from trame_vtkjs import (
+        PointCloudSource, StreamedSceneActor, Tiles3DSource,
+        Tiles3DQualityPolicy, Tiles3DTexturePolicy,
+    )
+    from trame_vtkjs.interaction import make_pickable, clear_pickable, PickPreview
+    from trame_vtkjs.projected_texture import (
+        MODE_HOMOGRAPHY, MODE_WORLD_TO_CLIP,
+        mark_projected_texture, set_projected_texture_matrix,
+    )
+    from trame_vtkjs.screen_size_glyphs import mark_screen_size_glyphs
+    from trame_vtkjs.streamed_scene import DEFAULT_ADAPTIVE_MIN_BUDGET, source_block
+    from trame_vtkjs.streamed_scene_blocks import AdaptiveOptions, Presentation
+
+The interaction, projected texture and screen size glyph modules also expose
+their configuration types and readers. ``streamed_scene_blocks`` describes the
+JSON feature blocks. These modules and ``view_types`` are supported application
+imports. ``module`` and the view implementation modules are internal.
+
+``trame.widgets.vtkjs`` exports both views and initializes the trame module;
+``trame.modules.vtkjs`` exposes its registration. The Vue plugin is
+``trame_vtkjs`` and exports ``install``, ``VtkJsLocal`` and ``VtkJsShared``. The
+``VtkJsLocalView`` and ``VtkJsSharedView`` classes retain their
+``vtk-js-local`` and ``vtk-js-shared`` elements. Browser hosts use
+``window.trameVtkjs.getView(key)``, ``whenView(key)`` and ``glMatrix``.
+
+The module serves ``__trame_vtkjs/js/trame_vtkjs.umd.js`` and the offline
+worker/codecs under ``__trame_vtkjs``. Worker filenames and the 3D Tiles codec
+layout belong to pointcloud-lod 0.12.6. Scene replication remains protocol v2
+with ``scene.ops`` and ``scene.resync``.
 
 
 Development
@@ -44,7 +86,7 @@ disagree about which vtk.js the bundle carries.
     npm run build:esm
     cd dist/esm
     npm link
-    cd ../../../trame-vtklocal/vue-components
+    cd ../../../trame-vtkjs/vue-components
     npm ci
     npm link @kitware/vtk.js
     npm run build
@@ -60,23 +102,26 @@ Install the library
 
     pip install -e .
 
-Fork release flow (shared-context)
+Release flow
 ----------------------------------------
 
-This ``shared-context`` fork publishes GitHub prerelease wheels for applications
-to pin by URL. The wheel version is stamped at build time with the git short sha
-(``0.16.0+shared-context.<sha>``, computed by the ``hatch_build.py`` metadata
-hook) so ``importlib.metadata.version("trame-vtklocal")`` proves exactly which
-fork commit produced the embedded UMD bundle.
+The independent release line starts at ``0.1.0``. GitHub prerelease wheels use
+``0.1.0+git.<sha>`` (computed by ``hatch_build.py``) and tags
+``v0.1.0-git.<sha>``. ``importlib.metadata.version("trame-vtkjs")`` identifies
+the source revision of the embedded UMD bundle.
+
+The shipping vtk.js history becomes ``main`` when the repository identity is
+changed. The unrelated historical upstream branches are archival references,
+not merge bases for this product.
 
 The wheel carries no VTK.wasm runtime. Its views render through vtk.js, which
-vite bundles into ``serve/js/trame_vtklocal.umd.js``; the only WebAssembly it
+vite bundles into ``serve/js/trame_vtkjs.umd.js``; the only WebAssembly it
 ships is the offline 3D Tiles decoders under ``serve/wasm/tiles3d/``.
 
-``.github/workflows/build-fork-wheel.yml`` builds and publishes releases on
-every push to ``shared-context``. CI builds the wheel once, runs the Python
-unit tests and a browser smoke test against that wheel, then publishes the
-tested artifact. Its inputs are immutable: vtk-js is fetched at the commit in
+``.github/workflows/build-fork-wheel.yml`` builds releases from ``main``. CI
+builds the wheel once, runs its Python and shared-context smoke gates, then
+publishes the tested artifact. Its inputs are immutable: vtk-js is fetched at
+the commit in
 ``vtkjs-fork.env`` and ``pointcloud-lod`` is installed from the lockfile.
 
 ``verify_chain.py`` proves that before any wheel ships: the linked vtk.js is a
@@ -89,7 +134,7 @@ written to ``serve/js/build-info.json``, which ships inside the wheel, and to
 ``dist/release-evidence.json``, which is attached to the release next to the
 wheel it describes.
 
-For local development checks, run ``release.sh build`` at the fork root. It
+For local development checks, run ``release.sh build`` at the repository root. It
 requires the vtk-js fork to be linked into ``vue-components`` (see Development
 above) and publishes nothing:
 
@@ -99,18 +144,19 @@ above) and publishes nothing:
 
 This rebuilds ``vue-components`` (the UMD bundle), builds the wheel, and asserts
 the UMD embedded in the wheel byte-matches the freshly built
-``serve/js/trame_vtklocal.umd.js`` (sha256 compare) so a stale wheel can never
+``serve/js/trame_vtkjs.umd.js`` (sha256 compare) so a stale wheel can never
 ship. It writes the wheel and ``release-evidence.json`` to ``dist/`` and prints
 the stamped version and the release tag.
 
 CI's final upload step runs ``release.sh publish`` on the tested wheel without
 rebuilding it. The command checks that ``dist/release-evidence.json`` names
 ``HEAD`` and the wheel's ``sha256``, then uploads the wheel and evidence to
-the GitHub prerelease ``v0.16.0-shared-context.<sha>``. It prints the dependency
-URL and wheel hash for application consumers.
+the GitHub prerelease ``v0.1.0-git.<sha>``. It prints the dependency
+URL and wheel hash for application consumers. Existing assets are immutable:
+a repeated upload must match their bytes, otherwise use a new version.
 
 To consume a release, update the application's dependency URL to the printed
-``trame-vtklocal = { url = "..." }`` entry and regenerate its lockfile. The URL
+``trame-vtkjs = { url = "..." }`` entry and regenerate its lockfile. The URL
 identifies the wheel built and verified from the pinned library revisions.
 
 
@@ -119,7 +165,8 @@ Running examples
 
 .. code-block:: console
 
-    pip install trame "trame-vtklocal[vtk]" trame-vuetify
+    pip install trame trame-vuetify
+    # Install the built trame-vtkjs wheel with its vtk extra as above.
 
     # a cone rendered with vtk.js on the view's own canvas
     python ./examples/vtk/vtkjs_cone.py
@@ -145,13 +192,6 @@ comparisons.
         tiles3d_quality_policy="fixed",
     )
 
-
-Professional Support
---------------------------------------------------------------------------
-
-* `Training <https://www.kitware.com/courses/trame/>`_: Learn how to confidently use trame from the expert developers at Kitware.
-* `Support <https://www.kitware.com/trame/support/>`_: Our experts can assist your team as you build your web application and establish in-house expertise.
-* `Custom Development <https://www.kitware.com/trame/support/>`_: Leverage Kitware’s 25+ years of experience to quickly build your web application.
 
 Scene gate for external resources
 ---------------------------------

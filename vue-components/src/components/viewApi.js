@@ -33,7 +33,7 @@ export const VIEW_PROPS = Object.freeze({
   },
   // The trame ref name this view is mounted under (e.g. "vtkMapView_map").
   // The Python widget sets it to the same value it uses for `ref`, so
-  // consumers resolve the view via window.trameVtklocal.whenView(refName).
+  // consumers resolve the view via window.trameVtkjs.whenView(refName).
   viewKey: {
     type: String,
     default: null,

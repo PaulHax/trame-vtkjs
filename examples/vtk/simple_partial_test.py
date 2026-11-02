@@ -16,7 +16,7 @@ from trame.app import get_server
 from trame.widgets import html
 from trame.ui.vuetify3 import SinglePageLayout
 
-from trame_vtklocal.widgets import VtkJsSharedView
+from trame_vtkjs.widgets import VtkJsSharedView
 
 from vtkmodules.vtkRenderingCore import (
     vtkRenderer,

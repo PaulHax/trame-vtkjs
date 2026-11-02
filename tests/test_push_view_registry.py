@@ -1,6 +1,6 @@
 """Blob retirement on view teardown, including shared and pull consumers."""
 
-from trame_vtklocal.module.push_views import PushViewRegistry
+from trame_vtkjs.module.push_views import PushViewRegistry
 
 
 class Manager:

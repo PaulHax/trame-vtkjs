@@ -13,8 +13,8 @@ from urllib.parse import quote as url_quote
 from trame.app import get_server
 from trame.ui.html import DivLayout
 from trame.widgets import client, html
-from trame_vtklocal.module import interaction as pick
-from trame_vtklocal.widgets import VtkJsLocalView
+from trame_vtkjs import interaction as pick
+from trame_vtkjs.widgets import VtkJsLocalView
 
 from vtkmodules.vtkCommonCore import vtkPoints
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData

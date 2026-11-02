@@ -20,9 +20,9 @@ from push_oracle.scenes import (
     make_points_cloud_scene,
     make_scalars_scene,
 )
-from trame_vtklocal.widgets.dirty_batch import DirtyBatch
-from trame_vtklocal.widgets.hot_array_batch import commit_hot_array_batch
-from trame_vtklocal.widgets.hot_arrays import live_dataset_array
+from trame_vtkjs.widgets.dirty_batch import DirtyBatch
+from trame_vtkjs.widgets.hot_array_batch import commit_hot_array_batch
+from trame_vtkjs.widgets.hot_arrays import live_dataset_array
 
 
 @pytest.fixture

@@ -2,9 +2,9 @@
 
 import pytest
 
-from trame_vtklocal.module import projected_texture as ptx
-from trame_vtklocal.module.protocol import ObjectManagerAPI
-from trame_vtklocal.module.node_translator import translate_scene
+from trame_vtkjs import projected_texture as ptx
+from trame_vtkjs.module.protocol import ObjectManagerAPI
+from trame_vtkjs.module.node_translator import translate_scene
 
 
 def _make_scene():

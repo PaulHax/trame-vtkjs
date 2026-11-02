@@ -1,11 +1,12 @@
 [project]
-name = "trame-vtklocal"
+name = "trame-vtkjs"
 # Version is stamped at build time (base + git short sha) by the custom
 # metadata hook in hatch_build.py. Base version lives there as BASE_VERSION.
 dynamic = ["version"]
-description = "VTK local rendering with vtk.js"
+description = "vtk.js scene replication and shared-context rendering for trame"
 authors = [
     {name = "Kitware Inc."},
+    {name = "Paul Elliott"},
 ]
 dependencies = [
     "trame",
@@ -25,6 +26,10 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
+
+[project.urls]
+Repository = "https://github.com/PaulHax/trame-vtkjs"
+Issues = "https://github.com/PaulHax/trame-vtkjs/issues"
 
 [project.optional-dependencies]
 vtk = [
@@ -49,28 +54,28 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# Stamps <base>+shared-context.<short-sha> into the wheel version at build time.
+# Stamps <base>+git.<short-sha> into the wheel version at build time.
 [tool.hatch.metadata.hooks.custom]
 
 [tool.hatch.build]
 include = [
-  "/src/trame_vtklocal/**/*.py",
-  "/src/trame_vtklocal/py.typed",
+  "/src/trame_vtkjs/**/*.py",
+  "/src/trame_vtkjs/py.typed",
   # Ship the vtk.js bundle plus the offline 3D Tiles decode runtime.
-  "/src/trame_vtklocal/module/serve/js/**",
-  "/src/trame_vtklocal/module/serve/wasm/tiles3d/**",
+  "/src/trame_vtkjs/module/serve/js/**",
+  "/src/trame_vtkjs/module/serve/wasm/tiles3d/**",
   "/src/trame/**/*.py",
 ]
 # The wheel ships every file under its `packages` (below), whatever `include`
 # says, so serve/wasm/ is limited to the offline 3D Tiles decoders.
 exclude = [
-  "/src/trame_vtklocal/module/serve/wasm/*",
-  "!/src/trame_vtklocal/module/serve/wasm/tiles3d",
+  "/src/trame_vtkjs/module/serve/wasm/*",
+  "!/src/trame_vtkjs/module/serve/wasm/tiles3d",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = [
-    "src/trame_vtklocal",
+    "src/trame_vtkjs",
     "src/trame",
 ]
 

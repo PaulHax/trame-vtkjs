@@ -6,7 +6,7 @@ import textwrap
 
 from vtkmodules.vtkRenderingCore import vtkActor, vtkPolyDataMapper
 
-from trame_vtklocal.module.feature_blocks import get_block, set_block
+from trame_vtkjs.module.feature_blocks import get_block, set_block
 
 
 def test_blocks_on_one_object_are_independent():
@@ -39,11 +39,11 @@ def test_a_process_that_sets_blocks_exits_cleanly():
     script = textwrap.dedent(
         """
         from vtkmodules.vtkRenderingCore import vtkActor, vtkGlyph3DMapper
-        from trame_vtklocal.module.interaction import make_pickable
-        from trame_vtklocal.module.screen_size_glyphs import (
+        from trame_vtkjs.interaction import make_pickable
+        from trame_vtkjs.screen_size_glyphs import (
             mark_screen_size_glyphs,
         )
-        from trame_vtklocal.streamed_scene import (
+        from trame_vtkjs.streamed_scene import (
             PointCloudSource,
             StreamedSceneActor,
         )

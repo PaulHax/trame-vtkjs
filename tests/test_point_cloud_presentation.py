@@ -4,9 +4,9 @@ import pytest
 from vtkmodules.vtkCommonDataModel import vtkPolyData
 from vtkmodules.vtkRenderingCore import vtkPointGaussianMapper
 
-from trame_vtklocal.module import point_cloud_presentation as presentation
-from trame_vtklocal.module.node_translator import translate_scene
-from trame_vtklocal.module.protocol import ObjectManagerAPI
+from trame_vtkjs.module import point_cloud_presentation as presentation
+from trame_vtkjs.module.node_translator import translate_scene
+from trame_vtkjs.module.protocol import ObjectManagerAPI
 
 
 def _scene():

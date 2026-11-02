@@ -143,7 +143,7 @@ def test_shared_geometry_survives_one_actor_leaving_and_returning():
 @pytest.mark.parametrize("flush_removed", [False, True])
 @pytest.mark.parametrize("changed", [False, True])
 def test_reentry_restores_blobs_and_retires_old_content(flush_removed, changed):
-    from trame_vtklocal.store import ref_manager_hashes
+    from trame_vtkjs.store import ref_manager_hashes
 
     scene = make_quad_scene()
     h = scene.handles

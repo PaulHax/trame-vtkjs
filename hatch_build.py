@@ -3,13 +3,13 @@
 ``project.version`` is declared ``dynamic`` in ``pyproject.toml`` so the version
 is computed here at build time as a PEP 440 local version:
 
-    <BASE_VERSION>+shared-context.<short-sha>
+    <BASE_VERSION>+git.<short-sha>
 
-e.g. ``0.16.0+shared-context.5d9327a``. The local segment round-trips through
-``importlib.metadata.version("trame-vtklocal")`` after install, so the wheel
-carries proof of exactly which fork commit produced its embedded UMD bundle.
+e.g. ``0.1.0+git.5d9327a``. The local segment round-trips through
+``importlib.metadata.version("trame-vtkjs")`` after install, so the wheel
+carries proof of exactly which bridge commit produced its embedded UMD bundle.
 
-The short sha is taken from ``$TRAME_VTKLOCAL_SHA`` when set (release.sh and the
+The short sha is taken from ``$TRAME_VTKJS_SHA`` when set (release.sh and the
 CI Action export it so the wheel version and the release tag agree), otherwise
 from ``git rev-parse --short HEAD`` in the source tree. If neither is available
 the plain ``BASE_VERSION`` is used so building from an unpacked sdist still works.
@@ -24,15 +24,15 @@ from hatchling.metadata.plugin.interface import MetadataHookInterface
 
 # The base version; ``project.version`` is dynamic. Bump this for a real
 # version change.
-BASE_VERSION = "0.16.0"
+BASE_VERSION = "0.1.0"
 
-# Kept consistent with the release tag scheme ``v<BASE>-shared-context.<sha>``
+# Kept consistent with the release tag scheme ``v<BASE>-git.<sha>``
 # and the app's wheel-pin URL.
-LOCAL_LABEL = "shared-context"
+LOCAL_LABEL = "git"
 
 
 def _short_sha(root: str) -> str | None:
-    sha = os.environ.get("TRAME_VTKLOCAL_SHA")
+    sha = os.environ.get("TRAME_VTKJS_SHA")
     if sha:
         return sha.strip()
     try:

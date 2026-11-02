@@ -48,15 +48,15 @@ function getPageMemoryPool(totalBytes) {
 }
 
 export const TILES3D_ASSET_URLS = Object.freeze({
-  worker: "/__trame_vtklocal/js/tiles3dDecodeWorker.classic.js",
+  worker: "/__trame_vtkjs/js/tiles3dDecodeWorker.classic.js",
   wasm: Object.freeze({
     draco: Object.freeze({
-      wrapperUrl: "/__trame_vtklocal/wasm/tiles3d/draco_wasm_wrapper.js",
-      wasmUrl: "/__trame_vtklocal/wasm/tiles3d/draco_decoder.wasm",
+      wrapperUrl: "/__trame_vtkjs/wasm/tiles3d/draco_wasm_wrapper.js",
+      wasmUrl: "/__trame_vtkjs/wasm/tiles3d/draco_decoder.wasm",
     }),
     basis: Object.freeze({
-      encoderUrl: "/__trame_vtklocal/wasm/tiles3d/basis_encoder.js",
-      wasmUrl: "/__trame_vtklocal/wasm/tiles3d/basis_encoder.wasm",
+      encoderUrl: "/__trame_vtkjs/wasm/tiles3d/basis_encoder.js",
+      wasmUrl: "/__trame_vtkjs/wasm/tiles3d/basis_encoder.wasm",
     }),
   }),
 });

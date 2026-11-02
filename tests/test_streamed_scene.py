@@ -13,11 +13,11 @@ import pytest
 from vtkmodules.vtkCommonMath import vtkMatrix4x4
 from vtkmodules.vtkRenderingCore import vtkActor, vtkRenderer, vtkRenderWindow
 
-import trame_vtklocal.streamed_scene as streamed_scene
-from trame_vtklocal import PointCloudSource, StreamedSceneActor, Tiles3DSource
-from trame_vtklocal.module.node_translator import translate_scene
-from trame_vtklocal.module.protocol import ObjectManagerAPI
-from trame_vtklocal.widgets.publisher import ScenePublisher
+import trame_vtkjs.streamed_scene as streamed_scene
+from trame_vtkjs import PointCloudSource, StreamedSceneActor, Tiles3DSource
+from trame_vtkjs.module.node_translator import translate_scene
+from trame_vtkjs.module.protocol import ObjectManagerAPI
+from trame_vtkjs.widgets.publisher import ScenePublisher
 
 import vtkmodules.vtkRenderingOpenGL2  # noqa: F401
 

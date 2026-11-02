@@ -1,7 +1,7 @@
 from trame.app import get_server
 from vtkmodules.vtkRenderingCore import vtkRenderer, vtkRenderWindow
 
-from trame_vtklocal.widgets import VtkJsLocalView, VtkJsSharedView
+from trame_vtkjs.widgets import VtkJsLocalView, VtkJsSharedView
 
 
 def _render_window():

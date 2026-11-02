@@ -36,8 +36,8 @@ from push_oracle.harness import (
     hot_array_fast_path,
     make_publisher,
 )
-from trame_vtklocal.module import interaction as pick
-from trame_vtklocal.widgets.publisher import OPS_TOPIC
+from trame_vtkjs import interaction as pick
+from trame_vtkjs.widgets.publisher import OPS_TOPIC
 
 
 def assert_client_matches_server(client, publisher):

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# release.sh: build the trame-vtklocal fork wheel with a commit-stamped version
+# release.sh: build the trame-vtkjs wheel with a commit-stamped version
 # and prove it was built from the pinned dependency chain, or publish the wheel
 # a build left in dist/ as a GitHub prerelease.
 #
@@ -15,7 +15,7 @@
 # that the evidence names HEAD and the wheel's sha256, so the wheel a release
 # carries is the one tested between the two steps. The
 # `.github/workflows/build-fork-wheel.yml` CI job runs `build`, tests that wheel,
-# then runs `publish` on every push to `shared-context`, so this is the single
+# then runs `publish` on every push to `main`, so this is the single
 # source of truth for both local and CI releases. In CI, `GH_TOKEN`/
 # `GITHUB_TOKEN` supplies gh auth (no interactive `gh auth login` needed).
 #
@@ -23,7 +23,7 @@
 #   PYTHON              python interpreter used for the build (default: python3;
 #                       must have `build` + `hatchling` for isolated builds)
 #
-# The wheel version is <BASE_VERSION>+shared-context.<short-sha> (see
+# The wheel version is <BASE_VERSION>+git.<short-sha> (see
 # hatch_build.py). The same short sha is exported so the build hook and the
 # release tag agree. Safe to re-run.
 #
@@ -38,11 +38,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 PYTHON="${PYTHON:-python3}"
-UMD_REL="src/trame_vtklocal/module/serve/js/trame_vtklocal.umd.js"
+UMD_REL="src/trame_vtkjs/module/serve/js/trame_vtkjs.umd.js"
 # Written by verify_chain.py next to the bundle, so hatch's serve/js/** include
 # ships it in the wheel alongside the bundle it describes.
-BUILD_INFO_REL="src/trame_vtklocal/module/serve/js/build-info.json"
+BUILD_INFO_REL="src/trame_vtkjs/module/serve/js/build-info.json"
 EVIDENCE_REL="dist/release-evidence.json"
+RELEASE_REPOSITORY="PaulHax/trame-vtkjs"
 
 usage() { sed -n '2,33p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
@@ -74,22 +75,30 @@ step() { echo; echo "==> $*"; }
 git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1 || die "not a git repo: $ROOT"
 FULL_SHA="$(git -C "$ROOT" rev-parse HEAD)"
 SHA="$(git -C "$ROOT" rev-parse --short HEAD)"
-export TRAME_VTKLOCAL_SHA="$SHA"
+export TRAME_VTKJS_SHA="$SHA"
 BASE="$(sed -n 's/^BASE_VERSION *= *"\(.*\)".*/\1/p' hatch_build.py | head -n1)"
 [ -n "$BASE" ] || die "could not read BASE_VERSION from hatch_build.py"
-TAG="v${BASE}-shared-context.${SHA}"
+TAG="v${BASE}-git.${SHA}"
 echo "commit=${SHA}  base=${BASE}  tag=${TAG}"
 
-# The one fork wheel in dist/ (build clears older ones first).
+require_committed_source() {
+  [ -z "$(git status --porcelain --untracked-files=all)" ] \
+    || die "source has uncommitted or untracked files; commit the release inputs first"
+  [ "$(git rev-parse HEAD)" = "$FULL_SHA" ] \
+    || die "HEAD changed during the release command"
+}
+
+# The one product wheel in dist/ (build clears older ones first).
 dist_wheel() {
   shopt -s nullglob
-  local wheels=(dist/trame_vtklocal-*.whl)
+  local wheels=(dist/trame_vtkjs-*.whl)
   shopt -u nullglob
   [ "${#wheels[@]}" -eq 1 ] || die "expected exactly one wheel in dist/, found ${#wheels[@]}"
   echo "${wheels[0]}"
 }
 
 build() {
+  require_committed_source
   # Same-version development packages cannot be identified by package metadata
   # or npm's hidden lockfile (which --package-lock-only also rewrites). Install
   # the locked bytes before bundling and restore the verified vtk.js build link.
@@ -125,9 +134,9 @@ PYTHON_CODE
 
   # --- build the wheel -----------------------------------------------------
   step "Building wheel (python -m build --wheel)"
-  # Clear prior fork wheels and evidence so exactly one wheel remains and no
+  # Clear prior product wheels and evidence so exactly one wheel remains and no
   # evidence outlives the wheel it describes.
-  rm -f dist/trame_vtklocal-*.whl "$EVIDENCE_REL"
+  rm -f dist/trame_vtkjs-*.whl "$EVIDENCE_REL"
   "$PYTHON" -m build --wheel --outdir dist . || die "wheel build failed"
   local wheel
   wheel="$(dist_wheel)"
@@ -136,7 +145,7 @@ PYTHON_CODE
   # --- assert the wheel embeds the fresh bundle and its build info ---------
   step "Verifying the wheel embeds the freshly built bundle"
   "$PYTHON" - "$wheel" \
-    "module/serve/js/trame_vtklocal.umd.js=$umd_sha" \
+    "module/serve/js/trame_vtkjs.umd.js=$umd_sha" \
     "module/serve/js/build-info.json=$build_info_sha" <<'PY'
 import hashlib, sys, zipfile
 wheel, *expected = sys.argv[1:]
@@ -178,6 +187,7 @@ PY
   # so a pinned wheel can be traced back to its inputs without rebuilding.
   local wheel_sha
   wheel_sha="$(sha256sum "$wheel" | awk '{print $1}')"
+  require_committed_source
   "$PYTHON" - "$BUILD_INFO_REL" "$EVIDENCE_REL" "$wheel" "$wheel_sha" "$version" "$TAG" <<'PY'
 import json, sys
 from pathlib import Path
@@ -209,6 +219,7 @@ PY
 }
 
 publish() {
+  require_committed_source
   step "Checking the dist/ wheel against its evidence"
   [ -f "$EVIDENCE_REL" ] || die "missing ${EVIDENCE_REL}; run './release.sh build' first"
   local wheel wheel_sha
@@ -223,11 +234,14 @@ from pathlib import Path
 path, wheel, wheel_sha, head, tag = sys.argv[1:]
 evidence = json.loads(Path(path).read_text())
 built = evidence["wheel"]
+source = evidence.get("bridgeSource", {})
 checks = {
     "commit": (evidence["bridgeCommit"], head),
     "tag": (built["tag"], tag),
     "wheel name": (built["name"], Path(wheel).name),
     "wheel sha256": (built["sha256"], wheel_sha),
+    "source commit": (source.get("commit"), head),
+    "source cleanliness": (source.get("dirty"), False),
 }
 for name, (recorded, actual) in checks.items():
     if recorded != actual:
@@ -253,7 +267,7 @@ PY
 
   local notes
   notes="$(cat <<EOF
-Fork build of trame-vtklocal at ${SHA} (version ${version}).
+trame-vtkjs at ${SHA} (version ${version}).
 
 Embedded chain (see the attached release-evidence.json):
 
@@ -264,28 +278,24 @@ Embedded chain (see the attached release-evidence.json):
 EOF
 )"
 
-  if gh release view "$TAG" >/dev/null 2>&1; then
-    echo "release ${TAG} exists — uploading wheel + evidence with --clobber"
-    gh release upload "$TAG" "$wheel" "$EVIDENCE_REL" --clobber || die "asset upload failed"
-  else
-    gh release create "$TAG" "$wheel" "$EVIDENCE_REL" \
-      --target "$FULL_SHA" \
-      --prerelease \
-      --title "$TAG" \
-      --notes "$notes" \
-      || die "gh release create failed"
-  fi
-
-  # Derive the true asset download URL from GitHub (it sanitizes filenames, so
-  # we read back what it actually served rather than guessing).
-  local dl_url
-  dl_url="$(gh release view "$TAG" --json assets \
-    -q '.assets[] | select(.name | endswith(".whl")) | .url' | head -n1)"
+  local notes_file uploaded dl_url
+  notes_file="$(mktemp)"
+  printf '%s\n' "$notes" > "$notes_file"
+  uploaded="$("$PYTHON" release_assets.py --repository "$RELEASE_REPOSITORY" \
+    --tag "$TAG" --commit "$FULL_SHA" --notes "$notes_file" \
+    "$wheel" "$EVIDENCE_REL")" || {
+      rm -f "$notes_file"
+      die "immutable release publication failed"
+    }
+  rm -f "$notes_file"
+  dl_url="$("$PYTHON" -c \
+    'import json,sys; from pathlib import Path; print(json.loads(sys.argv[1])[Path(sys.argv[2]).name])' \
+    "$uploaded" "$wheel")"
   [ -n "$dl_url" ] || die "could not read uploaded asset URL from release ${TAG}"
 
-  step "PUBLISHED — paste into the app's pyproject.toml"
+  step "PUBLISHED: paste into the app's pyproject.toml"
   echo
-  echo "trame-vtklocal = { url = \"${dl_url}\" }"
+  echo "trame-vtkjs = { url = \"${dl_url}\" }"
   echo
   echo "# sha256 = ${wheel_sha}"
 }

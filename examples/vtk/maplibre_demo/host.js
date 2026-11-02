@@ -2,14 +2,14 @@
 (async () => {
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   while (
-    !window.trameVtklocal?.whenView ||
+    !window.trameVtkjs?.whenView ||
     !window.maplibregl ||
     !window.glMatrix
   ) {
     await sleep(50);
   }
-  const shared = await window.trameVtklocal.whenView("demoMap");
-  const local = await window.trameVtklocal.whenView("demoLocal");
+  const shared = await window.trameVtkjs.whenView("demoMap");
+  const local = await window.trameVtkjs.whenView("demoLocal");
   while (!document.getElementById("map")) await sleep(50);
   const { mat4 } = glMatrix;
   const origin = maplibregl.MercatorCoordinate.fromLngLat([-74.006, 40.7128]);

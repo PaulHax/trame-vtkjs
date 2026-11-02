@@ -1,6 +1,9 @@
 import components from "./components";
 
-// Publishes window.trameVtklocal.glMatrix ({ mat4, vec3 }) on load.
+export { default as VtkJsLocal } from "./components/VtkJsLocal";
+export { default as VtkJsShared } from "./components/VtkJsShared";
+
+// Publishes window.trameVtkjs.glMatrix ({ mat4, vec3 }) on load.
 import "./glMatrix";
 
 export function install(Vue) {

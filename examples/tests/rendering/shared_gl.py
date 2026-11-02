@@ -14,7 +14,7 @@ from urllib.parse import quote as url_quote
 from trame.app import get_server
 from trame.ui.html import DivLayout
 from trame.widgets import html, client
-from trame_vtklocal.widgets import VtkJsSharedView
+from trame_vtkjs.widgets import VtkJsSharedView
 from trame_client.utils.testing import enable_testing
 
 
