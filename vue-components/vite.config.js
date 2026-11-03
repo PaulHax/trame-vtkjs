@@ -1,14 +1,12 @@
 import { copyFileSync, mkdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 
 import { glMatrixDir, vtkJsDir } from "./scripts/glMatrixDir.mjs";
 
-const tiles3dWorkerSource = fileURLToPath(
-  new URL(
-    "./node_modules/pointcloud-lod/dist/tiles3dDecodeWorker.classic.js",
-    import.meta.url,
-  ),
+const require = createRequire(import.meta.url);
+const tiles3dWorkerSource = require.resolve(
+  "tiled-vtkjs/tiles3d/decode-worker",
 );
 
 const tiles3dCodecSources = new Map(
@@ -19,12 +17,7 @@ const tiles3dCodecSources = new Map(
     "basis_encoder.wasm",
   ].map((name) => [
     name,
-    fileURLToPath(
-      new URL(
-        `./node_modules/pointcloud-lod/dist/tiles3d-codecs/${name}`,
-        import.meta.url,
-      ),
-    ),
+    require.resolve(`tiled-vtkjs/tiles3d/codecs/${name}`),
   ]),
 );
 
@@ -48,9 +41,8 @@ export default {
   plugins: [stageTiles3dRuntime],
   // Resolve the bare "gl-matrix" specifier (used by src/glMatrix.js and vtk.js
   // itself) to the single copy vtk.js depends on. Dedupe @kitware/vtk.js so
-  // linked packages (pointcloud-lod) resolve the same build this package
-  // uses — the fork symlinked at node_modules/@kitware/vtk.js — instead of a
-  // copy in their own tree.
+  // tiled-vtkjs adapters and linked packages resolve the pinned fork at
+  // node_modules/@kitware/vtk.js.
   resolve: {
     alias: {
       "gl-matrix": glMatrixDir,
@@ -59,7 +51,7 @@ export default {
     dedupe: ["@kitware/vtk.js"],
   },
   ssr: {
-    noExternal: ["pointcloud-lod"],
+    noExternal: ["tiled-vtkjs"],
   },
   build: {
     lib: {

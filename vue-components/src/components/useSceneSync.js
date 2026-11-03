@@ -37,7 +37,7 @@ import { createDragPreview } from "./dragPreview";
 import { createPresentationFeedback } from "./presentationFeedback";
 import { getExternalTextures, peekExternalTextures } from "./externalTextures";
 
-// `newStreamedSceneHost` is the one seam: the host drives pointcloud-lod's
+// `newStreamedSceneHost` is the one seam: the host drives tiled-vtkjs's
 // coordinator and workers, which unit tests replace with a fake host.
 export function useSceneSync(
   {

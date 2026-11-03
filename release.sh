@@ -88,9 +88,8 @@ dist_wheel() {
 
 build() {
   require_committed_source
-  # Same-version development packages cannot be identified by package metadata
-  # or npm's hidden lockfile (which --package-lock-only also rewrites). Install
-  # the locked bytes before bundling and restore the verified vtk.js build link.
+  # Install integrity-checked registry bytes before bundling and restore the
+  # verified vtk.js build link.
   step "Installing locked vue-components dependencies"
   local vtkjs_build
   vtkjs_build="$("$PYTHON" - <<'PYTHON_CODE'
@@ -138,9 +137,9 @@ PYTHON_CODE
     || die "artifact provenance verification failed"
   wheel_sha="$(sha256sum "$wheel" | awk '{print $1}')"
   version="$("$PYTHON" -c 'import json,sys; print(json.load(open(sys.argv[1]))["wheel"]["version"])' "$EVIDENCE_REL")"
-  local pcl_version
-  pcl_version="$("$PYTHON" -c \
-    'import json,sys; print(json.load(open(sys.argv[1]))["pointcloudLod"]["version"])' \
+  local tiled_version
+  tiled_version="$("$PYTHON" -c \
+    'import json,sys; print(json.load(open(sys.argv[1]))["tiledVtkjs"]["version"])' \
     "$BUILD_INFO_REL")"
 
   step "BUILD + VERIFY OK"
@@ -149,7 +148,7 @@ PYTHON_CODE
   echo "  wheel sha256   : ${wheel_sha}"
   echo "  tag            : ${TAG}"
   echo "  vtk.js         : ${VTKJS_FORK_COMMIT}"
-  echo "  pointcloud-lod : ${pcl_version}"
+  echo "  tiled-vtkjs    : ${tiled_version}"
   echo "  evidence       : ${EVIDENCE_REL}"
   echo
   echo "Not published. Run './release.sh publish' to release this wheel."
@@ -176,12 +175,12 @@ evidence = json.load(open(sys.argv[1]))
 if evidence["wheel"]["tag"] != sys.argv[2]:
     sys.exit("release tag does not match the built artifact")
 print(evidence["wheel"]["version"])
-print(evidence["pointcloudLod"]["version"])
+print(evidence["tiledVtkjs"]["version"])
 print(evidence["bundle"]["sha256"])
 PYCODE
 )" || die "release identity does not match the built artifact"
-  local version pcl_version umd_sha
-  { read -r version; read -r pcl_version; read -r umd_sha; } <<<"$fields"
+  local version tiled_version umd_sha
+  { read -r version; read -r tiled_version; read -r umd_sha; } <<<"$fields"
   echo "  wheel          : ${wheel}"
   echo "  wheel sha256   : ${wheel_sha}"
   echo "  version        : ${version}"
@@ -201,7 +200,7 @@ trame-vtkjs at ${SHA} (version ${version}).
 Embedded chain (see the attached release-evidence.json):
 
 - vtk.js ${VTKJS_FORK_REPO} @ \`${VTKJS_FORK_COMMIT}\`
-- pointcloud-lod ${pcl_version}
+- tiled-vtkjs ${tiled_version}
 - UMD sha256 \`${umd_sha}\`
 - wheel sha256 \`${wheel_sha}\`
 EOF

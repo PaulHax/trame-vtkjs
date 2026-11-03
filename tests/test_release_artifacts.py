@@ -51,7 +51,16 @@ def make_artifacts(directory, version="0.2.3", *, commit=COMMIT, tree="b" * 40):
             "sha256": artifacts.digest(b"qualified UMD"),
             "bytes": len(b"qualified UMD"),
         },
-        "pointcloudLod": {"version": "0.12.6"},
+        "tiledVtkjs": {
+            "version": "0.13.0",
+            "resolved": "https://registry.npmjs.org/tiled-vtkjs/-/tiled-vtkjs-0.13.0.tgz",
+            "integrity": (
+                "sha512-e8T8hIXiwTfCfYkXV/U/o/mb3jy2tpAexGJEK1VLYMGhvn2PLXIyxyFHrDamKmKl"
+                "KNY9Fa9rOS4HFntQ1sXQIg=="
+            ),
+            "sourceRevision": "83889b7b96457f1e32871164d6524ddba47607f7",
+            "minBudget": 200_000,
+        },
         "vtkjs": {"commit": "c" * 40},
     }
     runtime = {name: b"qualified runtime" for name in artifacts.REQUIRED_RUNTIME}
@@ -128,6 +137,8 @@ def test_record_and_verify_the_same_public_wheel_and_sdist(release):
         "tag": "trame-vtkjs-v0.2.3",
     }
     assert evidence["sdist"]["sha256"] == artifacts.sha256(release.sdist)
+    assert evidence["tiledVtkjs"] == release.info["tiledVtkjs"]
+    assert "pointcloudLod" not in evidence
     assert artifacts.verify(release.evidence, release.directory, COMMIT) == evidence
 
 

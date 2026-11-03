@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -17,18 +18,30 @@ def test_offline_tiles3d_runtime_is_staged_and_selected_for_wheel(tmp_path):
         "wasm/tiles3d/basis_encoder.wasm",
     }
     assert all((serve / relative).is_file() for relative in required)
-    codec_sources = {
-        "draco_wasm_wrapper.js": root
-        / "vue-components/node_modules/pointcloud-lod/dist/tiles3d-codecs/draco_wasm_wrapper.js",
-        "draco_decoder.wasm": root
-        / "vue-components/node_modules/pointcloud-lod/dist/tiles3d-codecs/draco_decoder.wasm",
-        "basis_encoder.js": root
-        / "vue-components/node_modules/pointcloud-lod/dist/tiles3d-codecs/basis_encoder.js",
-        "basis_encoder.wasm": root
-        / "vue-components/node_modules/pointcloud-lod/dist/tiles3d-codecs/basis_encoder.wasm",
+    runtime_exports = {
+        "js/tiles3dDecodeWorker.classic.js": "tiled-vtkjs/tiles3d/decode-worker",
+        "wasm/tiles3d/draco_wasm_wrapper.js": "tiled-vtkjs/tiles3d/codecs/draco_wasm_wrapper.js",
+        "wasm/tiles3d/draco_decoder.wasm": "tiled-vtkjs/tiles3d/codecs/draco_decoder.wasm",
+        "wasm/tiles3d/basis_encoder.js": "tiled-vtkjs/tiles3d/codecs/basis_encoder.js",
+        "wasm/tiles3d/basis_encoder.wasm": "tiled-vtkjs/tiles3d/codecs/basis_encoder.wasm",
     }
-    for name, source in codec_sources.items():
-        assert (serve / "wasm/tiles3d" / name).read_bytes() == source.read_bytes()
+    resolution = subprocess.run(
+        [
+            "node",
+            "--eval",
+            "const exports = JSON.parse(process.argv[1]); "
+            "console.log(JSON.stringify(Object.fromEntries("
+            "Object.entries(exports).map(([name, specifier]) => "
+            "[name, require.resolve(specifier)]))));",
+            json.dumps(runtime_exports),
+        ],
+        cwd=root / "vue-components",
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    for relative, source in json.loads(resolution.stdout).items():
+        assert (serve / relative).read_bytes() == Path(source).read_bytes()
 
     # Anything else a checkout holds under serve/wasm/ must stay out.
     stray = serve / "wasm" / "stale-runtime"
@@ -55,6 +68,11 @@ def test_offline_tiles3d_runtime_is_staged_and_selected_for_wheel(tmp_path):
     wheel = next(tmp_path.glob("*.whl"))
     with ZipFile(wheel) as archive:
         names = set(archive.namelist())
+        for relative in required:
+            assert (
+                archive.read("trame_vtkjs/module/serve/" + relative)
+                == (serve / relative).read_bytes()
+            )
     prefix = "trame_vtkjs/module/serve/"
     assert {prefix + relative for relative in required} <= names
     assert {name for name in names if name.startswith(prefix + "wasm/")} == {
