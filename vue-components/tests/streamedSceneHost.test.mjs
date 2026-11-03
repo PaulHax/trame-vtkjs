@@ -14,7 +14,7 @@ const IDENTITY = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 const TILES3D_SOURCE_CORPUS = JSON.parse(
   readFileSync(
     new URL(
-      "../node_modules/pointcloud-lod/test/fixtures/tiles3d-source-contract.json",
+      "../node_modules/tiled-vtkjs/test/fixtures/tiles3d-source-contract.json",
       import.meta.url,
     ),
     "utf8",
@@ -620,6 +620,8 @@ test("host lazily creates one member per actor and fans out anchor state", async
   assert.equal(log.contexts.length, 1);
   assert.equal(log.contexts[0][0], hostRenderer);
   assert.equal(member.factoryContext.renderer, hostRenderer);
+  assert.equal("workers" in member.factoryContext, false);
+  assert.equal("textureCapabilities" in member.factoryContext, false);
   assert.equal(member.factoryConfig.source.metadata().pointCount, 10);
   assert.ok(
     member.calls.some(([name, value]) => name === "model" && value === matrix),
@@ -773,6 +775,188 @@ test("default pointCloud factory streams through the extracted member API", asyn
     globalThis.fetch = previousFetch;
   }
   assert.ok(removed.length > 0, "host disposal retires streamed VTK actors");
+});
+
+test("default tiles3d factories bind each host's services and cancel only their own jobs", async () => {
+  const deferred = () => {
+    let resolve;
+    let reject;
+    const promise = new Promise((yes, no) => {
+      resolve = yes;
+      reject = no;
+    });
+    return { promise, resolve, reject };
+  };
+  const previousFetch = globalThis.fetch;
+  const fetches = [];
+  globalThis.fetch = async (url) => {
+    fetches.push(String(url));
+    return String(url).endsWith("/tileset.json")
+      ? new Response(
+          JSON.stringify({
+            asset: { version: "1.1" },
+            geometricError: 0,
+            root: {
+              boundingVolume: {
+                box: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+              },
+              geometricError: 0,
+              refine: "REPLACE",
+              content: { uri: "root.glb" },
+            },
+          }),
+          { status: 200 },
+        )
+      : new Response(new Uint8Array([1, 2, 3, 4]), { status: 200 });
+  };
+  const hosts = [];
+  try {
+    // This module instance captures the test's manifest transport.
+    const { createStreamedSceneHost, TILES3D_ASSET_URLS } = await loadModule(
+      "/src/components/streamedSceneHost.js?tiles3d-services",
+    );
+    const jobs = Array.from({ length: 2 }, () => ({
+      requested: deferred(),
+      result: deferred(),
+      cancelled: 0,
+      disposed: 0,
+    }));
+    const pools = jobs.map((job) => ({
+      decode(request) {
+        job.requested.resolve(request);
+        return {
+          promise: job.result.promise,
+          cancel() {
+            job.cancelled += 1;
+            job.result.reject(
+              new DOMException("Decode cancelled", "AbortError"),
+            );
+          },
+        };
+      },
+      dispose() {
+        job.disposed += 1;
+      },
+    }));
+    const added = [];
+    const removed = [];
+    const contexts = [];
+    let onFirstRenderNeeded = () => {};
+    for (const [index, workers] of pools.entries()) {
+      const anchor = actor();
+      const hostRenderer = {
+        ...renderer(),
+        addActor: (value) => added.push(value),
+        removeActor: (value) => removed.push(value),
+      };
+      const context = sceneContext(
+        new Map([["mesh", { actor: anchor, renderer: hostRenderer }]]),
+      );
+      if (index === 0) {
+        context.openGLRenderWindow = {
+          getContext: () => ({
+            getExtension: (name) =>
+              name === "WEBGL_compressed_texture_astc"
+                ? {
+                    COMPRESSED_RGBA_ASTC_4x4_KHR: 1,
+                    COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR: 2,
+                  }
+                : null,
+          }),
+        };
+      }
+      const host = createStreamedSceneHost({
+        workers,
+        tiles3dTexturePolicy: index === 0 ? "native" : "rgba",
+        scheduleRender: () => index === 0 && onFirstRenderNeeded(),
+      });
+      hosts.push(host);
+      contexts.push(context);
+      host.applyBlock(
+        "mesh",
+        tilesBlock({ endpoint: `/tileset/services-${index}/rev-1` }),
+        anchor,
+      );
+      host.beforeRender(context);
+    }
+    const requests = await Promise.all(
+      jobs.map((job) => job.requested.promise),
+    );
+    assert.deepEqual(requests[0].textureCapabilities, {
+      capabilityKey: "compressed-texture-v1:astc-4x4",
+      compressedFormats: ["astc-4x4"],
+    });
+    assert.deepEqual(requests[1].textureCapabilities, {
+      capabilityKey: "compressed-texture-v1:rgba",
+      compressedFormats: [],
+    });
+    assert.equal(
+      requests[0].contentUrl,
+      "http://localhost/tileset/services-0/rev-1/root.glb",
+    );
+    assert.equal(
+      requests[1].dependencyRootUrl,
+      "http://localhost/tileset/services-1/rev-1/",
+    );
+    assert.equal(
+      requests[0].wasm.draco.wasmUrl,
+      `http://localhost${TILES3D_ASSET_URLS.wasm.draco.wasmUrl}`,
+    );
+    assert.equal(
+      requests[0].wasm.basis.encoderUrl,
+      `http://localhost${TILES3D_ASSET_URLS.wasm.basis.encoderUrl}`,
+    );
+    assert.ok(
+      fetches.some((url) => url.endsWith("/services-0/rev-1/root.glb")),
+    );
+
+    const renderNeeded = deferred();
+    onFirstRenderNeeded = renderNeeded.resolve;
+    jobs[0].result.resolve({
+      primitives: [
+        {
+          positions: new Float32Array([0, 0, 0, 0.5, 0, 0, 0, 0.5, 0]),
+          material: {
+            baseColorFactor: [1, 1, 1, 1],
+            raw: {
+              version: 1,
+              kind: "gltf-material",
+              alphaMode: "OPAQUE",
+              alphaCutoff: 0.5,
+              doubleSided: false,
+              unlit: true,
+              metallicFactor: 0,
+              roughnessFactor: 1,
+              emissiveFactor: [0, 0, 0],
+            },
+          },
+        },
+      ],
+      origin: [0, 0, 0],
+      byteEstimate: { geometry: 36, textures: 0 },
+    });
+    await renderNeeded.promise;
+    hosts[0].beforeRender(contexts[0]);
+    assert.equal(added.length, 1);
+    assert.equal(added[0].getVisibility(), true);
+    assert.equal(hosts[0].describe().members[0].stats.drawnActors, 1);
+    hosts[0].dispose();
+    assert.deepEqual(removed, added);
+    assert.equal(
+      jobs[1].cancelled,
+      0,
+      "the other host's decode remains active",
+    );
+    hosts[1].dispose();
+    assert.equal(jobs[1].cancelled, 1);
+    assert.deepEqual(
+      jobs.map((job) => job.disposed),
+      [0, 0],
+    );
+  } finally {
+    for (const host of hosts) host.dispose();
+    globalThis.fetch = previousFetch;
+  }
 });
 
 test("initial visibility gates creation and actor removal tears down realization", async () => {
@@ -1037,7 +1221,10 @@ test("hosts share one page-wide memory pool while coordinators remain per view",
     createCoordinator: fakeCoordinatorFactory(second),
   });
   assert.equal(first.options.memory, second.options.memory);
-  assert.equal(first.options.workers, second.options.workers);
+  assert.equal("workers" in first.options, false);
+  assert.equal("textureCapabilities" in first.options, false);
+  assert.equal("workers" in second.options, false);
+  assert.equal("textureCapabilities" in second.options, false);
   assert.notEqual(first, second);
   one.dispose();
   two.dispose();
@@ -1113,10 +1300,10 @@ test("tiles members receive live capabilities, offline assets, and rebuild after
     },
   });
   assert.equal(
-    log.options.textureCapabilities.capabilityKey,
+    host.describe().textureCapabilities.capabilityKey,
     "compressed-texture-v1:astc-4x4",
   );
-  assert.deepEqual(log.options.textureCapabilities.compressedFormats, [
+  assert.deepEqual(host.describe().textureCapabilities.compressedFormats, [
     "astc-4x4",
   ]);
   assert.equal(host.describe().members[0].kind, "tiles3d");
@@ -1265,7 +1452,7 @@ test("software WebGL contexts force KTX2 decoding through RGBA fallback", async 
   host.applyBlock("mesh", tilesBlock(), anchor);
   host.beforeRender(context);
 
-  assert.deepEqual(log.options.textureCapabilities, {
+  assert.deepEqual(host.describe().textureCapabilities, {
     capabilityKey: "compressed-texture-v1:rgba",
     compressedFormats: [],
   });

@@ -32,8 +32,8 @@ if TYPE_CHECKING:
 STREAMED_SCENE_TYPE = "vtkStreamedSceneActor"
 STREAMED_SCENE_BLOCK = "streamedScene"
 
-# Mirrored from pointcloud-lod's adaptive governor.  verify_chain.py checks the
-# copy against the linked library source.
+# Mirrored from tiled-vtkjs's adaptive governor.  verify_chain.py checks the
+# copy against the installed library.
 DEFAULT_ADAPTIVE_MIN_BUDGET = 200_000
 
 # The one tolerance rule for a column-major affine matrix on the wire, owned
@@ -41,7 +41,7 @@ DEFAULT_ADAPTIVE_MIN_BUDGET = 200_000
 # entries are exact constants, so the band is absolute, not relative: an entry
 # is accepted when ``abs(value - expected) <= AFFINE_ENTRY_ABS_TOL``.  The
 # client re-checks arriving payloads with the same numbers through
-# pointcloud-lod's ``validateAffineMatrix``.
+# tiled-vtkjs's ``validateAffineMatrix``.
 AFFINE_ENTRY_ABS_TOL = 1e-12
 AFFINE_FIXED_ENTRIES = ((3, 0.0), (7, 0.0), (11, 0.0), (15, 1.0))
 # A linear block this close to singular has no usable inverse for picking.

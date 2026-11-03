@@ -10,8 +10,8 @@ export async function loadModule(modulePath) {
       configFile: false,
       root: process.cwd(),
       // Match vite.config.js so a bare "gl-matrix" import resolves to vtk.js's
-      // copy under ssrLoadModule too, and linked packages with vtk.js as an
-      // optional peer (pointcloud-lod) resolve this package's vtk.js.
+      // copy under ssrLoadModule too, and tiled-vtkjs adapters resolve this
+      // package's pinned vtk.js build.
       resolve: {
         alias: {
           "gl-matrix": glMatrixDir,
@@ -20,7 +20,7 @@ export async function loadModule(modulePath) {
         dedupe: ["@kitware/vtk.js"],
       },
       ssr: {
-        noExternal: ["pointcloud-lod"],
+        noExternal: ["tiled-vtkjs"],
       },
       server: {
         middlewareMode: true,

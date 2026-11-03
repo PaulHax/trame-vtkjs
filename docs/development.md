@@ -28,7 +28,7 @@ git -C "$vtkjs_build" checkout --detach "$VTKJS_FORK_COMMIT"
 ```
 
 Use an existing clean renderer checkout at the pinned commit if one is available.
-The `pointcloud-lod` dependency must come from its integrity-checked lockfile,
+The `tiled-vtkjs` dependency must come from its integrity-checked lockfile,
 not a linked development tree. Rebuild the browser client after changing its
 source; Python serves the built files.
 

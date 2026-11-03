@@ -2,19 +2,19 @@
 // inert actor; format members own the renderable actors they place beside it.
 
 import {
-  DecodeWorkerPool,
-  createHttpTileSource,
   createMemoryPool,
   createStreamedMemberFactoryRegistry,
   createStreamedSceneCoordinator,
   cursorRay,
   validateAffineMatrix,
-} from "pointcloud-lod";
+} from "tiled-vtkjs/core";
+import { createHttpTileSource } from "tiled-vtkjs/points";
 import {
   DEFAULT_MIN_POINT_BUDGET,
   createPointCloudMember,
-  createTiles3dMember,
-} from "pointcloud-lod/vtk";
+} from "tiled-vtkjs/points/vtk";
+import { DecodeWorkerPool } from "tiled-vtkjs/tiles3d";
+import { createTiles3dMember } from "tiled-vtkjs/tiles3d/vtk";
 import { getCompressedTextureCapabilities } from "@kitware/vtk.js/Rendering/OpenGL/Texture/compressedFormats";
 
 import { createMeshAppearanceRenderer } from "./meshAppearance";
@@ -122,13 +122,16 @@ function acquirePageWorkers() {
   };
 }
 
-const defaultMemberFactories = createStreamedMemberFactoryRegistry();
-defaultMemberFactories.register("pointCloud", (context, config) =>
-  createPointCloudMember(context, config),
-);
-defaultMemberFactories.register("tiles3d", (context, config) =>
-  createTiles3dMember(context, config),
-);
+function createDefaultMemberFactories(tiles3dServices) {
+  const factories = createStreamedMemberFactoryRegistry();
+  factories.register("pointCloud", (context, config) =>
+    createPointCloudMember(context, config),
+  );
+  factories.register("tiles3d", (context, config) =>
+    createTiles3dMember(context, config, tiles3dServices),
+  );
+  return factories;
+}
 
 const nonEmptyString = (value) =>
   typeof value === "string" && value.length > 0 ? value : null;
@@ -615,7 +618,6 @@ export function enrichGestureWithCloudSolve(
 
 export function createStreamedSceneHost(options = {}) {
   const scheduleRender = options.scheduleRender ?? (() => {});
-  const factories = options.factories ?? defaultMemberFactories;
   const tiles3dTexturePolicy = ["native", "rgba"].includes(
     options.tiles3dTexturePolicy,
   )
@@ -630,6 +632,9 @@ export function createStreamedSceneHost(options = {}) {
     capabilityKey: "compressed-texture-v1:rgba",
     compressedFormats: [],
   };
+  const factories =
+    options.factories ??
+    createDefaultMemberFactories({ workers, textureCapabilities });
   let webglRenderer = { vendor: null, renderer: null, version: null };
   let rgbaReason = null;
   let probedGl = null;
@@ -638,8 +643,6 @@ export function createStreamedSceneHost(options = {}) {
   )({
     scheduleRender,
     memory,
-    workers,
-    textureCapabilities,
     ...(options.coordinatorOptions ?? {}),
   });
   const entries = new Map();

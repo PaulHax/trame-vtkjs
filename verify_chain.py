@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import base64
 import hashlib
 import json
 import re
@@ -31,6 +30,15 @@ ROOT = Path(__file__).resolve().parent
 PIN_FILE = ROOT / "vtkjs-fork.env"
 VUE = ROOT / "vue-components"
 STREAMED_SCENE_PY = ROOT / "src" / "trame_vtkjs" / "streamed_scene.py"
+TILED_VTKJS_RELEASE = {
+    "version": "0.13.0",
+    "resolved": "https://registry.npmjs.org/tiled-vtkjs/-/tiled-vtkjs-0.13.0.tgz",
+    "integrity": (
+        "sha512-e8T8hIXiwTfCfYkXV/U/o/mb3jy2tpAexGJEK1VLYMGhvn2PLXIyxyFHrDamKmKl"
+        "KNY9Fa9rOS4HFntQ1sXQIg=="
+    ),
+    "sourceRevision": "83889b7b96457f1e32871164d6524ddba47607f7",
+}
 
 # The bundle is minified, so class names are mangled but the strings vtk.js
 # registers itself with survive verbatim. Quote style differs per bundler
@@ -74,7 +82,9 @@ def bridge_source() -> dict:
     return {
         "commit": git_output(ROOT, "rev-parse", "HEAD"),
         "tree": git_output(ROOT, "rev-parse", "HEAD^{tree}"),
-        "dirty": bool(git_output(ROOT, "status", "--porcelain", "--untracked-files=all")),
+        "dirty": bool(
+            git_output(ROOT, "status", "--porcelain", "--untracked-files=all")
+        ),
     }
 
 
@@ -116,9 +126,15 @@ def check_vtkjs(pin: dict) -> dict:
     }
 
 
-def check_pointcloud_lod() -> dict:
-    """pointcloud-lod must come from the lockfile, not from a dev symlink."""
-    installed = VUE / "node_modules" / "pointcloud-lod"
+def check_tiled_vtkjs() -> dict:
+    """Require the verified registry release associated with the source revision.
+
+    The package does not embed a Git revision. The published tarball's SHA512
+    binds this source revision to its vetted bytes; accepting another registry
+    version or a hand-packed archive would make that provenance untrue.
+    ``release.sh`` installs these locked bytes with ``npm ci`` before bundling.
+    """
+    installed = VUE / "node_modules" / "tiled-vtkjs"
     if not installed.exists():
         die(f"{installed} is missing: run `npm ci` in vue-components")
     if installed.is_symlink():
@@ -127,59 +143,36 @@ def check_pointcloud_lod() -> dict:
             "embed whatever that tree happens to hold. Run `npm ci` in "
             "vue-components to install the locked, integrity-checked release."
         )
-    version = json.loads((installed / "package.json").read_text())["version"]
+    package = json.loads((installed / "package.json").read_text())
+    if package.get("name") != "tiled-vtkjs":
+        die(f"{installed} does not identify the tiled-vtkjs package")
+
+    manifest = json.loads((VUE / "package.json").read_text())
+    if (
+        manifest.get("dependencies", {}).get("tiled-vtkjs")
+        != TILED_VTKJS_RELEASE["version"]
+    ):
+        die("package.json must pin the verified tiled-vtkjs release exactly")
 
     lock = json.loads((VUE / "package-lock.json").read_text())
-    entry = lock.get("packages", {}).get("node_modules/pointcloud-lod")
+    entry = lock.get("packages", {}).get("node_modules/tiled-vtkjs")
     if not entry:
-        die("package-lock.json has no node_modules/pointcloud-lod entry")
-    resolved, integrity = entry.get("resolved", ""), entry.get("integrity", "")
-    # Development releases use a full source revision in both tag and asset;
-    # the lockfile's digest pins the bytes just as it does for npm releases.
-    commit_tarball = re.fullmatch(
-        r"https://github\.com/PaulHax/pointcloud-lod/releases/download/"
-        r"revision-([0-9a-f]{40})/pointcloud-lod-\1\.tgz",
-        resolved,
-    )
-    local_tarball = re.fullmatch(
-        r"file:vendor/pointcloud-lod-([0-9a-f]{40})\.tgz", resolved
-    )
-    if not resolved.startswith("https://registry.npmjs.org/") and not (
-        commit_tarball or local_tarball
-    ):
+        die("package-lock.json has no node_modules/tiled-vtkjs entry")
+    for field in ("version", "resolved", "integrity"):
+        if entry.get(field) != TILED_VTKJS_RELEASE[field]:
+            die(
+                f"tiled-vtkjs lock {field} does not match the verified registry release"
+            )
+    if package.get("version") != entry["version"]:
         die(
-            f"pointcloud-lod must resolve to a revision-pinned tarball, got '{resolved}'"
-        )
-    if local_tarball:
-        archive = VUE / resolved.removeprefix("file:")
-        if not archive.is_file():
-            die(f"missing local pointcloud-lod archive: {archive}")
-        digest = base64.b64encode(
-            hashlib.sha512(archive.read_bytes()).digest()
-        ).decode()
-        if integrity != f"sha512-{digest}":
-            die("local pointcloud-lod archive does not match the lockfile integrity")
-    if not integrity.startswith("sha512-"):
-        die(f"pointcloud-lod lock entry carries no sha512 integrity: '{integrity}'")
-    if entry.get("version") != version:
-        die(
-            f"installed pointcloud-lod {version} != locked {entry.get('version')} "
+            f"installed tiled-vtkjs {package.get('version')} != locked {entry['version']} "
             "- run `npm ci` in vue-components"
         )
-    return {
-        "version": version,
-        "resolved": resolved,
-        "integrity": integrity,
-        **(
-            {"sourceRevision": (commit_tarball or local_tarball).group(1)}
-            if commit_tarball or local_tarball
-            else {}
-        ),
-    }
+    return dict(TILED_VTKJS_RELEASE)
 
 
 def node_json(source: str, what: str):
-    """Evaluate an ESM snippet with `pointcloud-lod` resolved as the bundle
+    """Evaluate an ESM snippet with `tiled-vtkjs` resolved as the bundle
     resolves it, and read back what it prints as JSON."""
     try:
         out = subprocess.check_output(
@@ -191,9 +184,7 @@ def node_json(source: str, what: str):
         die(f"node is not on PATH, so {what} cannot be read from the library")
     except subprocess.CalledProcessError as error:
         detail = error.stderr.decode().strip().splitlines()
-        die(
-            f"reading {what} from pointcloud-lod failed: {detail[-1] if detail else ''}"
-        )
+        die(f"reading {what} from tiled-vtkjs failed: {detail[-1] if detail else ''}")
     return json.loads(out)
 
 
@@ -207,18 +198,18 @@ def check_adaptive_floor() -> dict:
     read it here, or a policy change leaves the two validators disagreeing
     about which configurations are legal.
 
-    It must come from the package root: the renderer entry (``pointcloud-lod
-    /vtk``) cannot be imported from node at all, so a floor reachable only
+    It must come from ``tiled-vtkjs/core``: the renderer entries cannot be
+    imported from node at all, so a floor reachable only
     through it is a floor this gate cannot check.
     """
     library = node_json(
-        'const m = await import("pointcloud-lod");'
+        'const m = await import("tiled-vtkjs/core");'
         "console.log(JSON.stringify(m.ADAPTIVE_QUALITY_DEFAULTS?.minBudget ?? null));",
         "ADAPTIVE_QUALITY_DEFAULTS.minBudget",
     )
     if not isinstance(library, (int, float)):
         die(
-            "pointcloud-lod no longer exports ADAPTIVE_QUALITY_DEFAULTS.minBudget; "
+            "tiled-vtkjs/core no longer exports ADAPTIVE_QUALITY_DEFAULTS.minBudget; "
             f"the Python source floor in {STREAMED_SCENE_PY.name} has nothing to track"
         )
 
@@ -243,7 +234,7 @@ def check_adaptive_floor() -> dict:
     if python != library:
         die(
             f"{STREAMED_SCENE_PY.name} DEFAULT_ADAPTIVE_MIN_BUDGET is {python:_} but "
-            f"pointcloud-lod DEFAULTS.minBudget is {library:_}. The two validators "
+            f"tiled-vtkjs DEFAULTS.minBudget is {library:_}. The two validators "
             "would accept different max_budget values; set the Python copy to the "
             "library's floor."
         )
@@ -256,7 +247,7 @@ def check_no_vtkjs_range() -> None:
     render a point cloud."""
     manifests = [
         VUE / "package.json",
-        VUE / "node_modules" / "pointcloud-lod" / "package.json",
+        VUE / "node_modules" / "tiled-vtkjs" / "package.json",
     ]
     fields = (
         "dependencies",
@@ -292,7 +283,7 @@ def check_bundle(umd: Path) -> dict:
         )
 
     required = {
-        # The mapper the pointcloud-lod renderer adapter instantiates.
+        # The mapper the tiled-vtkjs points renderer adapter instantiates.
         "vtkPointGaussianMapper": registers("vtkPointGaussianMapper"),
         # Without the OpenGL override the mapper draws nothing.
         "vtkOpenGLPointGaussianMapper": registers("vtkOpenGLPointGaussianMapper"),
@@ -330,7 +321,7 @@ def main() -> None:
 
     pin = read_pin()
     vtkjs = check_vtkjs(pin)
-    pointcloud_lod = check_pointcloud_lod()
+    tiled_vtkjs = check_tiled_vtkjs()
     check_no_vtkjs_range()
     adaptive = check_adaptive_floor()
     bundle = check_bundle(args.umd)
@@ -339,15 +330,15 @@ def main() -> None:
         "bridgeCommit": git_output(ROOT, "rev-parse", "HEAD"),
         "bridgeSource": bridge_source(),
         "vtkjs": vtkjs,
-        "pointcloudLod": {**pointcloud_lod, **adaptive},
+        "tiledVtkjs": {**tiled_vtkjs, **adaptive},
         "bundle": bundle,
     }
     args.build_info.parent.mkdir(parents=True, exist_ok=True)
     args.build_info.write_text(json.dumps(build_info, indent=2, sort_keys=True) + "\n")
 
     print(f"  vtk.js         : {vtkjs['commit']} ({vtkjs['branch']})")
-    print(f"  pointcloud-lod : {pointcloud_lod['version']}")
-    print(f"                   {pointcloud_lod['integrity']}")
+    print(f"  tiled-vtkjs    : {tiled_vtkjs['version']}")
+    print(f"                   {tiled_vtkjs['integrity']}")
     print(f"  adaptive floor : {adaptive['minBudget']:_} (library == Python)")
     print(f"  bundle sha256  : {bundle['sha256']}")
     print(f"  bundle carries : {', '.join(bundle['present'])}")

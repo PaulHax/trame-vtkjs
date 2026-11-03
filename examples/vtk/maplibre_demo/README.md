@@ -68,7 +68,7 @@ window.maplibreDemo.diagnostics() exposes frame, paint, stream and patch counter
 
 The cyan cloud uses actual HTTP hierarchy and PCT1 tile requests. The orange
 mesh uses an actual 3D Tiles 1.1 tileset with an embedded PNG texture in its GLB.
-They exercise the pointcloud-lod adapters, workers, transforms, visibility,
+They exercise the tiled-vtkjs adapters, workers, transforms, visibility,
 opacity and shared page coordinator. Their tiny size does **not** stress LOD
 selection, adaptive budgets, memory eviction or performance.
 

@@ -57,7 +57,7 @@ IDENTITY = (
 TILES3D_SOURCE_CORPUS = json.loads(
     (
         Path(__file__).parent.parent
-        / "vue-components/node_modules/pointcloud-lod/test/fixtures/tiles3d-source-contract.json"
+        / "vue-components/node_modules/tiled-vtkjs/test/fixtures/tiles3d-source-contract.json"
     ).read_text()
 )
 
