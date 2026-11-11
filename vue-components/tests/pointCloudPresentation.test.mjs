@@ -127,3 +127,28 @@ test("leaving fixed CSS sizing restores the mapper's point size scale", async ()
   assert.deepEqual(mapper.pointSizeScales, [2, 1]);
   assert.equal(registry.size, 0);
 });
+
+test("the native simple-point wire mapper retains CSS sizing with the split renderer API", async () => {
+  const { buildInstance } = await loadModule(
+    "/src/components/instanceFactory.js",
+  );
+  const { applyPointCloudPresentationBlock } = await loadPresentationModule();
+  const mapper = buildInstance("vtkPointGaussianMapper");
+  const previous = globalThis.devicePixelRatio;
+  try {
+    globalThis.devicePixelRatio = 2;
+    applyPointCloudPresentationBlock(
+      new Map(),
+      "native",
+      { mode: "fixed", diameterCssPx: 3 },
+      mapper,
+    );
+    assert.equal(mapper.getPointSizeScale(), 2);
+    assert.equal(mapper.getScaleFactor(), 0);
+    assert.equal(mapper.isA("vtkPointSpriteMapper"), true);
+  } finally {
+    mapper.delete();
+    if (previous === undefined) delete globalThis.devicePixelRatio;
+    else globalThis.devicePixelRatio = previous;
+  }
+});

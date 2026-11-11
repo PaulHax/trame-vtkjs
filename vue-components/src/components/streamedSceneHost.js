@@ -19,6 +19,8 @@ import { getCompressedTextureCapabilities } from "@kitware/vtk.js/Rendering/Open
 
 import { createMeshAppearanceRenderer } from "./meshAppearance";
 
+import { createGaussianSceneRuntime } from "./gaussianSceneRuntime";
+
 import { getWorldToClipMatrix } from "./cameraMatrix";
 import { isLiveInstance, isPositiveFinite } from "./predicates";
 import { getDevicePixelRatio, getViewportMetrics } from "./viewportMetrics";
@@ -632,9 +634,16 @@ export function createStreamedSceneHost(options = {}) {
     capabilityKey: "compressed-texture-v1:rgba",
     compressedFormats: [],
   };
+  const gaussian = createGaussianSceneRuntime({
+    resourceBudgetBytes: memory.stats().totalBytes,
+  });
   const factories =
     options.factories ??
-    createDefaultMemberFactories({ workers, textureCapabilities });
+    createDefaultMemberFactories({
+      workers,
+      textureCapabilities,
+      createContentAdapter: gaussian.createContentAdapter,
+    });
   let webglRenderer = { vendor: null, renderer: null, version: null };
   let rgbaReason = null;
   let probedGl = null;
@@ -873,6 +882,7 @@ export function createStreamedSceneHost(options = {}) {
     for (const entry of entries.values()) updateEntry(entry, context, views);
     coordinator.noteRenderedCameras(views);
     coordinator.prepareFrame(context.frameSerial);
+    gaussian.beforeRender(context.openGLRenderWindow, context.renderers ?? []);
   }
 
   // `renderer` is the entry's drawnRenderer().
@@ -1074,6 +1084,7 @@ export function createStreamedSceneHost(options = {}) {
           statuses: { ...picking.statuses },
         },
         pageMemory: memory.stats(),
+        gaussianRenderers: gaussian.stats(),
       };
     },
     dispose() {
@@ -1083,6 +1094,7 @@ export function createStreamedSceneHost(options = {}) {
       entries.clear();
       rejected.clear();
       coordinator.dispose();
+      gaussian.dispose();
       workerLease?.release();
     },
   };

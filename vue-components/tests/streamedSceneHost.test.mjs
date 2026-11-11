@@ -839,6 +839,7 @@ test("default tiles3d factories bind each host's services and cancel only their 
       },
     }));
     const added = [];
+    const actorsByHost = [new Set(), new Set()];
     const removed = [];
     const contexts = [];
     let onFirstRenderNeeded = () => {};
@@ -846,8 +847,14 @@ test("default tiles3d factories bind each host's services and cancel only their 
       const anchor = actor();
       const hostRenderer = {
         ...renderer(),
-        addActor: (value) => added.push(value),
-        removeActor: (value) => removed.push(value),
+        addActor(value) {
+          added.push(value);
+          actorsByHost[index].add(value);
+        },
+        removeActor(value) {
+          removed.push(value);
+          actorsByHost[index].delete(value);
+        },
       };
       const context = sceneContext(
         new Map([["mesh", { actor: anchor, renderer: hostRenderer }]]),
@@ -915,6 +922,7 @@ test("default tiles3d factories bind each host's services and cancel only their 
     jobs[0].result.resolve({
       primitives: [
         {
+          kind: "mesh",
           positions: new Float32Array([0, 0, 0, 0.5, 0, 0, 0, 0.5, 0]),
           material: {
             baseColorFactor: [1, 1, 1, 1],
@@ -936,18 +944,27 @@ test("default tiles3d factories bind each host's services and cancel only their 
       byteEstimate: { geometry: 36, textures: 0 },
     });
     await renderNeeded.promise;
-    hosts[0].beforeRender(contexts[0]);
-    assert.equal(added.length, 1);
-    assert.equal(added[0].getVisibility(), true);
+    for (let frame = 0; frame < 100; frame++) {
+      hosts[0].beforeRender(contexts[0]);
+      if (hosts[0].describe().members[0].stats.drawnActors === 1) break;
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.equal(
+      [...actorsByHost[0]].filter((actor) => actor.getVisibility()).length,
+      1,
+    );
     assert.equal(hosts[0].describe().members[0].stats.drawnActors, 1);
     hosts[0].dispose();
-    assert.deepEqual(removed, added);
+    assert.equal(actorsByHost[0].size, 0);
+    assert.equal(hosts[1].describe().members[0].hasMember, true);
     assert.equal(
       jobs[1].cancelled,
       0,
       "the other host's decode remains active",
     );
     hosts[1].dispose();
+    assert.equal(actorsByHost[1].size, 0);
+    assert.deepEqual(new Set(removed), new Set(added));
     assert.equal(jobs[1].cancelled, 1);
     assert.deepEqual(
       jobs.map((job) => job.disposed),
