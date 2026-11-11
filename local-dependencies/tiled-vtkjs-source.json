@@ -1,7 +1,7 @@
 {
-  "sourceRevision": "11396032280c9c2039fece4f3aa5f2bce6553990",
+  "sourceRevision": "0b8e29351776eb55f157ac32de262e91699c90a1",
   "repository": "https://github.com/PaulHax/tiled-vtkjs",
-  "archive": "local-dependencies/tiled-vtkjs-11396032280c9c2039fece4f3aa5f2bce6553990.tgz",
-  "specifier": "file:../local-dependencies/tiled-vtkjs-11396032280c9c2039fece4f3aa5f2bce6553990.tgz",
-  "integrity": "sha512-Mv2SnZtDwuQiwm5IAhefY+vrQt8P5fW6M4BN1/v7mop2nRz0rCTumGZncHqXLm/+CaYDmsx3y3STYgerlfNFOw=="
+  "archive": "local-dependencies/tiled-vtkjs-0b8e29351776eb55f157ac32de262e91699c90a1.tgz",
+  "specifier": "file:../local-dependencies/tiled-vtkjs-0b8e29351776eb55f157ac32de262e91699c90a1.tgz",
+  "integrity": "sha512-QP0X8Z+uTKEpJp/Sc8bEaJSFZTZZxWJ2td9CBuSXFhDlom0Mt9rHIPhpjthrVBsmduyTMvFTUnNEy9D8fGYw1A=="
 }
