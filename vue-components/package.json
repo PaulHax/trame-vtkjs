@@ -13,7 +13,7 @@
     "vue": "^2.7.0 || >=3.0.0"
   },
   "dependencies": {
-    "tiled-vtkjs": "file:../local-dependencies/tiled-vtkjs-7b01a6a6a918d8ad729e7356676f339fdd3ddafd.tgz"
+    "tiled-vtkjs": "file:../local-dependencies/tiled-vtkjs-8e2c09edc73038cd6bfe4fa029e9467702d6bc13.tgz"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
