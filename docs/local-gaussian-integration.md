@@ -5,7 +5,7 @@ TeleSculptor Web city preview. It is a local integration, not a public release.
 
 Exact sources:
 
-- tiled-vtkjs: `6ee398ff143ab4cc48e2961b947ccb85fce23f32`
+- tiled-vtkjs: `11396032280c9c2039fece4f3aa5f2bce6553990`
 - vtk.js: `147c0e8c2635559512fa277db81590706b239159`
 
 `local-dependencies/tiled-vtkjs-source.json` binds the source revision to the
