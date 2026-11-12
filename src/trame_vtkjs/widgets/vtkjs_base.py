@@ -111,8 +111,9 @@ class VtkJsBaseView(HtmlElement):
         self._render_window = render_window
         self._window_id = self.object_manager.RegisterObject(render_window)
         render_window.Render()
-        # The object manager is shared across views: serialize this window only.
-        self.object_manager.UpdateStatesFromObjects([int(self._window_id)])
+        # Filtered serialization preserves VTK's cached ROOT. Rebuild it when
+        # the set of registered windows changes so every view stays reachable.
+        self.api.refresh_object_manager()
 
         self._publisher: ScenePublisher | None = None
         self._closed = False
@@ -254,8 +255,10 @@ class VtkJsBaseView(HtmlElement):
             publisher.cleanup()
             self._publisher = None
         object_manager.UnRegisterObject(int(self._window_id))
-        object_manager.PruneUnusedObjects()
-        object_manager.PruneUnusedStates()
+        # Unregistering removes the root's weak entry, so pruning cannot find
+        # its state. Rebuild the remaining roots before retiring shared blobs.
+        object_manager.UnRegisterState(int(self._window_id))
+        api.refresh_object_manager()
         api.flush_stale_blobs()
         self._closed = True
 
