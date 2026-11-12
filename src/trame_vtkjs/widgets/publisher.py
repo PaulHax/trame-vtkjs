@@ -358,8 +358,8 @@ class ScenePublisher:
         # Dead objects and states are pruned on detachment. Shared blob
         # ownership belongs to the registry, which retires payloads by hash.
         object_manager = self._object_manager
-        object_manager.PruneUnusedObjects()
         object_manager.PruneUnusedStates()
+        object_manager.PruneUnusedObjects()
 
     def _refresh_window_states(self) -> None:
         """Render + refresh the whole window's serialized states (eager init)."""

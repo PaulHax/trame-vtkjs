@@ -32,8 +32,8 @@ class PushViewRegistry:
         if not self._push_views:
             # VTK states omit translated field arrays. A global blob prune
             # is safe only before a live publisher owns any such payloads.
-            self.vtk_object_manager.PruneUnusedObjects()
             self.vtk_object_manager.PruneUnusedStates()
+            self.vtk_object_manager.PruneUnusedObjects()
             self.vtk_object_manager.PruneUnusedBlobs()
         self._push_views[rw_id] = publisher
         self._push_view_blob_hashes.setdefault(rw_id, set())
@@ -44,6 +44,16 @@ class PushViewRegistry:
         leaving = self._push_view_blob_hashes.pop(rw_id, set())
         self._pending_stale_blob_hashes.update(leaving)
         if leaving:
+            self._schedule_blob_gc()
+
+    def refresh_object_manager(self) -> None:
+        """Rebuild shared roots and track serialized snapshots for retirement."""
+        self.vtk_object_manager.UpdateStatesFromObjects()
+        # Retained array patches need no manager blob, but this refresh creates
+        # one for their current values. Keep it only while a state or view
+        # names it, including when a later refresh replaces that snapshot.
+        self._pending_stale_blob_hashes |= self._active_object_blob_hashes()
+        if self._pending_stale_blob_hashes:
             self._schedule_blob_gc()
 
     def update_push_view_refs(

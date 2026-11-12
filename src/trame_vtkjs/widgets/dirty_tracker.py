@@ -186,8 +186,8 @@ class DirtyTracker:
                 if object_id not in self._owner_ids:
                     self._drop_observer(object_id)
             if removed:
-                self._object_manager.PruneUnusedObjects()
                 self._object_manager.PruneUnusedStates()
+                self._object_manager.PruneUnusedObjects()
         return changed
 
     def sync_observers(self) -> None:
