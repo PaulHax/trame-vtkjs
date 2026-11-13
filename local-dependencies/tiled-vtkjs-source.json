@@ -1,0 +1,7 @@
+{
+  "sourceRevision": "60d671e0b4fe948ebde315e8e66909d5e70fd839",
+  "repository": "https://github.com/PaulHax/tiled-vtkjs",
+  "archive": "local-dependencies/tiled-vtkjs-60d671e0b4fe948ebde315e8e66909d5e70fd839.tgz",
+  "specifier": "file:../local-dependencies/tiled-vtkjs-60d671e0b4fe948ebde315e8e66909d5e70fd839.tgz",
+  "integrity": "sha512-NsnfDSr2JRrUf7neiqAGjGZlV0y6lSbQIrbxe6xjL74CSwrGT1JqGuEXxJ/TZN5rt+RwiqRT0j7ogetFtnxiJQ=="
+}
