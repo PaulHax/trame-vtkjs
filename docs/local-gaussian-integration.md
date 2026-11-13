@@ -1,11 +1,11 @@
 # Local Gaussian integration
 
 This branch integrates tiled-vtkjs's memory-first Gaussian stack for the
-TeleSculptor Web city preview. It is a local integration, not a public release.
+TeleSculptor Web city preview. Gaussian loading is experimental. This is a review integration, not a public release.
 
 Exact sources:
 
-- tiled-vtkjs: `0b8e29351776eb55f157ac32de262e91699c90a1`
+- tiled-vtkjs: `60d671e0b4fe948ebde315e8e66909d5e70fd839`
 - vtk.js: `147c0e8c2635559512fa277db81590706b239159`
 
 `local-dependencies/tiled-vtkjs-source.json` binds the source revision to the
@@ -43,3 +43,7 @@ constructs the anisotropic Gaussian mapper independently.
 
 The local app preview has its own attribution and documented detail/placement
 limits. Headless browser checks establish correctness, not hardware throughput.
+
+## Review distributions
+
+PR CI builds the recorded snapshot with `build_review_snapshot.py`, then runs the same installed-wheel Python and browser qualification as production. It retains the wheel, source distribution and checksummed evidence as CI artifacts. The app may track that wheel and its immutable provenance for review. Main still requires the published registry dependency through `release.sh`; this snapshot branch is not production-release ready. No release tag or registry publication is created by the review builder.

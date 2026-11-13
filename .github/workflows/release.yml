@@ -106,8 +106,17 @@ jobs:
           if [ -n "$PUBLIC_VERSION" ]; then
             export TRAME_VTKJS_RELEASE_VERSION="$PUBLIC_VERSION"
           fi
-          ./release.sh build
-          ./release.sh verify
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ -f local-dependencies/tiled-vtkjs-source.json ]; then
+            # Review snapshots retain the same downstream wheel qualification.
+            # Main still uses the production verifier and cannot publish these bytes.
+            revision=$(python -c 'import json; print(json.load(open("local-dependencies/tiled-vtkjs-source.json"))["sourceRevision"])')
+            git clone --no-checkout https://github.com/PaulHax/tiled-vtkjs.git "$RUNNER_TEMP/tiled-review"
+            git -C "$RUNNER_TEMP/tiled-review" checkout --detach "$revision"
+            python build_review_snapshot.py --tiled-source "$RUNNER_TEMP/tiled-review"
+          else
+            ./release.sh build
+            ./release.sh verify
+          fi
           python -m twine check dist/*.whl dist/*.tar.gz
       - name: Install the exact wheel into a clean test environment
         working-directory: trame-vtkjs
