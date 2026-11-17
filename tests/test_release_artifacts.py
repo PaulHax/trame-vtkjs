@@ -245,10 +245,16 @@ def test_runtime_asset_or_python_facade_differences_are_rejected(release, name):
         record(release)
 
 
-def test_missing_codec_in_both_distributions_is_rejected(release):
-    name = "trame_vtkjs/module/serve/wasm/tiles3d/basis_encoder.wasm"
-    release.wheel_files.pop(name)
-    release.sdist_files.pop(release.prefix + "src/" + name)
+@pytest.mark.parametrize(
+    "name",
+    [
+        "trame_vtkjs/module/serve/wasm/tiles3d/basis_encoder.wasm",
+        "trame_vtkjs/module/serve/js/gaussianSortWorker.js",
+    ],
+)
+def test_missing_runtime_in_both_distributions_is_rejected(release, name):
+    release.wheel_files.pop(name, None)
+    release.sdist_files.pop(release.prefix + "src/" + name, None)
     write_wheel(release)
     write_sdist(release)
     with pytest.raises(artifacts.ArtifactError, match="missing runtime files"):

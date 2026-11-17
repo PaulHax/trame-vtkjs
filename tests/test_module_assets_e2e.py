@@ -22,9 +22,10 @@ def test_registered_assets_and_offline_workers(server, page):
     with page.expect_response(lambda r: "trame_vtkjs.umd.js" in r.url) as response:
         page.goto(f"{base_url}/")
     expect(page.locator(".readyCount")).not_to_have_text("0")
-    assert hashlib.sha256(response.value.body()).digest() == hashlib.sha256(
-        (root / "js/trame_vtkjs.umd.js").read_bytes()
-    ).digest()
+    assert (
+        hashlib.sha256(response.value.body()).digest()
+        == hashlib.sha256((root / "js/trame_vtkjs.umd.js").read_bytes()).digest()
+    )
     assert page.evaluate(
         """() => ['install', 'VtkJsLocal', 'VtkJsShared'].every(
           key => Boolean(window.trame_vtkjs[key])) &&
@@ -33,6 +34,7 @@ def test_registered_assets_and_offline_workers(server, page):
 
     assets = [
         "js/tiles3dDecodeWorker.classic.js",
+        "js/gaussianSortWorker.js",
         "wasm/tiles3d/draco_wasm_wrapper.js",
         "wasm/tiles3d/draco_decoder.wasm",
         "wasm/tiles3d/basis_encoder.js",
@@ -41,9 +43,10 @@ def test_registered_assets_and_offline_workers(server, page):
     for asset in assets:
         served = page.request.get(f"{base_url}/__trame_vtkjs/{asset}")
         assert served.ok, asset
-        assert hashlib.sha256(served.body()).digest() == hashlib.sha256(
-            (root / asset).read_bytes()
-        ).digest(), asset
+        assert (
+            hashlib.sha256(served.body()).digest()
+            == hashlib.sha256((root / asset).read_bytes()).digest()
+        ), asset
 
     result = page.evaluate(
         """async () => {
@@ -66,6 +69,32 @@ def test_registered_assets_and_offline_workers(server, page):
     assert result["jobId"] == 1
     assert result["kind"] == "error"
     assert result["error"]["name"] == "TileDecodeError"
+
+    sorted_splats = page.evaluate(
+        """async () => {
+          const worker = new Worker('/__trame_vtkjs/js/gaussianSortWorker.js', {
+            type: 'module'
+          });
+          let timer;
+          try {
+            return await new Promise((resolve, reject) => {
+              timer = setTimeout(() => reject(new Error('Gaussian sort worker stalled')), 10000);
+              worker.onerror = event => reject(new Error(event.message));
+              worker.onmessage = ({data}) => resolve({
+                ...data, order: data.order ? Array.from(data.order) : null
+              });
+              worker.postMessage({kind: 'scene', sceneRevision: 1, ranges: [{
+                id: 'installed-wheel', generation: 0,
+                positions: Float32Array.of(1, 0, 0, 3, 0, 0),
+                modelToScene: [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]
+              }]});
+              worker.postMessage({kind: 'sort', jobId: 2, sceneRevision: 1,
+                cameraPosition: [0, 0, 0]});
+            });
+          } finally { clearTimeout(timer); worker.terminate(); }
+        }"""
+    )
+    assert sorted_splats == {"kind": "order", "jobId": 2, "order": [1, 0]}
 
     codecs = page.evaluate(
         """async () => {

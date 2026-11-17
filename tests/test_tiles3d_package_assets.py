@@ -12,6 +12,7 @@ def test_offline_tiles3d_runtime_is_staged_and_selected_for_wheel(tmp_path):
     required = {
         "js/trame_vtkjs.umd.js",
         "js/tiles3dDecodeWorker.classic.js",
+        "js/gaussianSortWorker.js",
         "wasm/tiles3d/draco_wasm_wrapper.js",
         "wasm/tiles3d/draco_decoder.wasm",
         "wasm/tiles3d/basis_encoder.js",
