@@ -5,6 +5,7 @@ import {
   createMemoryPool,
   createStreamedMemberFactoryRegistry,
   createStreamedSceneCoordinator,
+  getPageRequestAdmission,
   cursorRay,
   validateAffineMatrix,
 } from "tiled-vtkjs/core";
@@ -40,7 +41,10 @@ function getPageMemoryPool(totalBytes) {
     );
   }
   if (!pageMemoryPool)
-    pageMemoryPool = createMemoryPool({ totalBytes: totalBytes ?? undefined });
+    pageMemoryPool = createMemoryPool({
+      totalBytes: totalBytes ?? undefined,
+      admission: getPageRequestAdmission(),
+    });
   if (totalBytes != null && pageMemoryPool.stats().totalBytes !== totalBytes) {
     throw new Error(
       "All views on a page must use the same streamedMemoryBudgetBytes",
@@ -82,10 +86,17 @@ const tiles3dWasmUrls = () => ({
 let pageWorkerPool = null;
 let pageWorkerReferences = 0;
 const pageWorkers = {
+  hasCapacity() {
+    return (
+      pageWorkerPool?.hasCapacity() ??
+      getPageRequestAdmission().canAcquireWorker("decode")
+    );
+  },
   decode(request, options) {
     if (!pageWorkerPool) {
       pageWorkerPool = new DecodeWorkerPool({
         workerUrl: TILES3D_ASSET_URLS.worker,
+        admission: getPageRequestAdmission(),
       });
     }
     return pageWorkerPool.decode(request, options);
@@ -94,7 +105,6 @@ const pageWorkers = {
     return (
       pageWorkerPool?.stats?.() ?? {
         size: 0,
-        queuedJobs: 0,
         activeJobs: 0,
         completedJobs: 0,
         failedJobs: 0,

@@ -12,29 +12,13 @@ export function createGaussianSceneRuntime(options = {}) {
     getOpenGLRenderWindow: () =>
       window?.isA?.("vtkOpenGLRenderWindow") ? window : null,
     resourceBudgetBytes: options.resourceBudgetBytes,
-    createSortBackend: () => {
-      let backend = null;
-      let disposed = false;
-      return {
-        sort(job) {
-          if (disposed)
-            return Promise.reject(
-              new DOMException("Sort disposed", "AbortError"),
-            );
-          backend ??= createGaussianSortWorkerBackend(
-            new Worker("/__trame_vtkjs/js/gaussianSortWorker.js", {
-              type: "module",
-            }),
-          );
-          return backend.sort(job);
-        },
-        dispose() {
-          disposed = true;
-          backend?.dispose();
-          backend = null;
-        },
-      };
-    },
+    createSortBackend: (onIdleFailure) =>
+      createGaussianSortWorkerBackend(
+        new Worker("/__trame_vtkjs/js/gaussianSortWorker.js", {
+          type: "module",
+        }),
+        onIdleFailure,
+      ),
   });
   const renderers = new Map();
   let originalPasses = null;
