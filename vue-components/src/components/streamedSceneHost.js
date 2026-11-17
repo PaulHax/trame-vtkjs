@@ -881,8 +881,10 @@ export function createStreamedSceneHost(options = {}) {
     const views = new Map();
     for (const entry of entries.values()) updateEntry(entry, context, views);
     coordinator.noteRenderedCameras(views);
+    const renderers = context.renderers ?? [];
+    gaussian.prepareContext(context.openGLRenderWindow, renderers);
     coordinator.prepareFrame(context.frameSerial);
-    gaussian.beforeRender(context.openGLRenderWindow, context.renderers ?? []);
+    gaussian.beforeRender(renderers);
   }
 
   // `renderer` is the entry's drawnRenderer().
