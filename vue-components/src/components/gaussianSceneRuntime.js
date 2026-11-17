@@ -7,7 +7,10 @@ import {
 import { createGaussianSortWorkerBackend } from "tiled-vtkjs/tiles3d";
 
 export function createGaussianSceneRuntime(options = {}) {
+  let window = null;
   const factory = createGaussianContentAdapterFactory({
+    getOpenGLRenderWindow: () =>
+      window?.isA?.("vtkOpenGLRenderWindow") ? window : null,
     resourceBudgetBytes: options.resourceBudgetBytes,
     createSortBackend: () => {
       let backend = null;
@@ -34,7 +37,6 @@ export function createGaussianSceneRuntime(options = {}) {
     },
   });
   const renderers = new Map();
-  let window = null;
   let originalPasses = null;
   let alphaPass = null;
   let forwardPass = null;
@@ -68,7 +70,7 @@ export function createGaussianSceneRuntime(options = {}) {
         },
       };
     },
-    beforeRender(nextWindow, currentRenderers) {
+    prepareContext(nextWindow, currentRenderers) {
       if (nextWindow !== window) {
         restore();
         forwardPass?.delete();
@@ -78,6 +80,9 @@ export function createGaussianSceneRuntime(options = {}) {
         window = nextWindow;
         originalPasses = window?.getRenderPasses?.() ?? [];
       }
+      for (const renderer of currentRenderers) factory.noteContext(renderer);
+    },
+    beforeRender(currentRenderers) {
       const needed = currentRenderers.some(
         (renderer) => (factory.stats(renderer)?.displayedSplats ?? 0) > 0,
       );
