@@ -1,3 +1,4 @@
+import { withPointTextureUploads } from "@kitware/vtk.js/Rendering/OpenGL/PointGaussianMapper/dataTextures";
 // Per-view host for synthetic streamed-scene actors. The wire anchor is an
 // inert actor; format members own the renderable actors they place beside it.
 
@@ -43,6 +44,8 @@ function getPageMemoryPool(totalBytes) {
   if (!pageMemoryPool)
     pageMemoryPool = createMemoryPool({
       totalBytes: totalBytes ?? undefined,
+      // An explicit host budget is the renderer's peak, including overlap.
+      transitionBytes: totalBytes == null ? undefined : 0,
       admission: getPageRequestAdmission(),
     });
   if (totalBytes != null && pageMemoryPool.stats().totalBytes !== totalBytes) {
@@ -893,7 +896,12 @@ export function createStreamedSceneHost(options = {}) {
     coordinator.noteRenderedCameras(views);
     const renderers = context.renderers ?? [];
     gaussian.prepareContext(context.openGLRenderWindow, renderers);
-    coordinator.prepareFrame(context.frameSerial);
+    withPointTextureUploads(
+      context.openGLRenderWindow?.isA?.("vtkOpenGLRenderWindow")
+        ? context.openGLRenderWindow
+        : null,
+      () => coordinator.prepareFrame(context.frameSerial),
+    );
     gaussian.beforeRender(renderers);
   }
 

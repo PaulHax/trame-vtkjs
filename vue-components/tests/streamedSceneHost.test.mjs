@@ -1335,6 +1335,36 @@ test("hosts share one page-wide memory pool while coordinators remain per view",
   two.dispose();
 });
 
+test("an explicit renderer budget includes replacement overlap", async () => {
+  const { createStreamedSceneHost } = await loadModule(
+    "/src/components/streamedSceneHost.js?hard-renderer-cap",
+  );
+  const log = coordinatorLog();
+  const host = createStreamedSceneHost({
+    streamedMemoryBudgetBytes: 256,
+    createCoordinator: fakeCoordinatorFactory(log),
+  });
+  const owner = log.options.memory.createOwner();
+  try {
+    const predecessor = owner.reserveRenderer(160);
+    assert.throws(
+      () => owner.reserveRenderer(128, { replacing: [predecessor] }),
+      (error) =>
+        error.estimate?.reason === "transition-unavailable" &&
+        error.estimate.peakBytes === 288,
+    );
+    assert.equal(log.options.memory.stats().rendererBytes, 160);
+    const successor = owner.reserveRenderer(96, { replacing: [predecessor] });
+    assert.equal(log.options.memory.stats().rendererBytes, 256);
+    predecessor.release();
+    successor.release();
+    assert.equal(log.options.memory.stats().rendererBytes, 0);
+  } finally {
+    owner.close();
+    host.dispose();
+  }
+});
+
 test("tiles members receive live capabilities, offline assets, and rebuild after context change", async () => {
   const { createStreamedSceneHost, TILES3D_ASSET_URLS } = await loadModule(
     "/src/components/streamedSceneHost.js",
