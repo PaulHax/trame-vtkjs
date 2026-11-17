@@ -801,67 +801,104 @@ test("tiles transport keeps vertical currency separate from the live anchor", as
   host.dispose();
 });
 
-test("default pointCloud factory streams through the extracted member API", async () => {
-  const { createStreamedSceneHost } = await loadModule(
-    "/src/components/streamedSceneHost.js",
-  );
-  const previousFetch = globalThis.fetch;
-  const fetches = [];
-  globalThis.fetch = async (url) => {
-    fetches.push(String(url));
-    return String(url).includes("/hierarchy/")
-      ? new Response(JSON.stringify(HIERARCHY), { status: 200 })
-      : new Response(pct1(), { status: 200 });
-  };
-  const added = [];
-  const removed = [];
-  let noteActorAdded;
-  const actorAdded = new Promise((resolve) => {
-    noteActorAdded = resolve;
-  });
-  const hostRenderer = {
-    ...renderer(),
-    addActor(value) {
-      added.push(value);
-      noteActorAdded();
-    },
-    removeActor(value) {
-      removed.push(value);
-      const index = added.indexOf(value);
-      if (index >= 0) added.splice(index, 1);
-    },
-  };
-  const anchor = actor();
-  const bindings = new Map([
-    ["real", { actor: anchor, renderer: hostRenderer }],
-  ]);
-  const context = sceneContext(bindings);
-  const host = createStreamedSceneHost();
-  try {
-    host.applyBlock(
-      "real",
-      pointBlock({
-        sourceAssetId: "real-asset",
-        pointCloud: { ...pointBlock().pointCloud, pointCount: 2 },
-      }),
-      anchor,
+test(
+  "default pointCloud factory prepares hidden geometry and publishes at paint",
+  { timeout: 60_000 },
+  async () => {
+    const { createStreamedSceneHost } = await loadModule(
+      "/src/components/streamedSceneHost.js",
     );
-    host.beforeRender(context);
-    await actorAdded;
-    assert.ok(fetches.some((url) => url.endsWith("/hierarchy/0-0-0-0.json")));
-    assert.ok(fetches.some((url) => url.endsWith("/tile/0-0-0-0.bin")));
-    assert.equal(added.length, 1);
-    assert.equal(host.describe().members[0].stats.kind, "pointCloud");
-    assert.equal(
-      host.describe().members[0].stats.residentBytes,
-      host.describe().members[0].stats.renderer.gpuResidentBytes,
-    );
-  } finally {
-    host.dispose();
-    globalThis.fetch = previousFetch;
-  }
-  assert.ok(removed.length > 0, "host disposal retires streamed VTK actors");
-});
+    const previousFetch = globalThis.fetch;
+    const fetches = [];
+    globalThis.fetch = async (url) => {
+      fetches.push(String(url));
+      return String(url).includes("/hierarchy/")
+        ? new Response(JSON.stringify(HIERARCHY), { status: 200 })
+        : new Response(pct1(), { status: 200 });
+    };
+    const added = [];
+    const removed = [];
+    const prepared = [];
+    const released = [];
+    let notePublished;
+    const published = new Promise((resolve) => {
+      notePublished = resolve;
+    });
+    const hostRenderer = {
+      ...renderer(),
+      addActor(value) {
+        added.push(value);
+      },
+      removeActor(value) {
+        removed.push(value);
+        const index = added.indexOf(value);
+        if (index >= 0) added.splice(index, 1);
+      },
+    };
+    const anchor = actor();
+    const bindings = new Map([
+      ["real", { actor: anchor, renderer: hostRenderer }],
+    ]);
+    const context = sceneContext(bindings);
+    const gl = {
+      getExtension: () => null,
+      getParameter: () => null,
+      isContextLost: () => false,
+    };
+    context.openGLRenderWindow = {
+      isA: (name) => name === "vtkOpenGLRenderWindow",
+      isDeleted: () => false,
+      getContext: () => gl,
+      preparePolygonalGeometry(renderer, prop) {
+        prepared.push({ renderer, prop, visible: prop.getVisibility() });
+        return { bytes: 32, release: () => released.push(prop) };
+      },
+    };
+    let renderScheduled = false;
+    let disposed = false;
+    const host = createStreamedSceneHost({
+      scheduleRender() {
+        if (renderScheduled) return;
+        renderScheduled = true;
+        queueMicrotask(() => {
+          renderScheduled = false;
+          if (disposed) return;
+          host.beforeRender(context);
+          if (added.some((prop) => prop.getVisibility())) notePublished();
+        });
+      },
+    });
+    try {
+      host.applyBlock(
+        "real",
+        pointBlock({
+          sourceAssetId: "real-asset",
+          pointCloud: { ...pointBlock().pointCloud, pointCount: 2 },
+        }),
+        anchor,
+      );
+      host.beforeRender(context);
+      await published;
+      assert.ok(fetches.some((url) => url.endsWith("/hierarchy/0-0-0-0.json")));
+      assert.ok(fetches.some((url) => url.endsWith("/tile/0-0-0-0.bin")));
+      assert.equal(added.length, 1);
+      assert.deepEqual(prepared, [
+        { renderer: hostRenderer, prop: added[0], visible: false },
+      ]);
+      const stats = host.describe().members[0].stats;
+      assert.equal(stats.kind, "pointCloud");
+      assert.equal(stats.renderer.drawnPoints, 2);
+      assert.equal(stats.renderer.gpuGeometryUploadBytes, 32);
+      assert.equal(stats.residentBytes, stats.renderer.gpuResidentBytes);
+    } finally {
+      disposed = true;
+      host.dispose();
+      globalThis.fetch = previousFetch;
+    }
+    assert.deepEqual(removed, released);
+    assert.equal(removed.length, 1);
+  },
+);
 
 test(
   "default page decoder preserves managed memory admission",
