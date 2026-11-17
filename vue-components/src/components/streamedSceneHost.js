@@ -137,10 +137,10 @@ function acquirePageWorkers() {
   };
 }
 
-function createDefaultMemberFactories(tiles3dServices) {
+function createDefaultMemberFactories(tiles3dServices, pointCloudServices) {
   const factories = createStreamedMemberFactoryRegistry();
   factories.register("pointCloud", (context, config) =>
-    createPointCloudMember(context, config),
+    createPointCloudMember(context, config, pointCloudServices),
   );
   factories.register("tiles3d", (context, config) =>
     createTiles3dMember(context, config, tiles3dServices),
@@ -652,11 +652,14 @@ export function createStreamedSceneHost(options = {}) {
   });
   const factories =
     options.factories ??
-    createDefaultMemberFactories({
-      workers,
-      textureCapabilities,
-      createContentAdapter: gaussian.createContentAdapter,
-    });
+    createDefaultMemberFactories(
+      {
+        workers,
+        textureCapabilities,
+        createContentAdapter: gaussian.createContentAdapter,
+      },
+      { getOpenGLRenderWindow: () => liveView(lastContext) },
+    );
   let webglRenderer = { vendor: null, renderer: null, version: null };
   let rgbaReason = null;
   let probedGl = null;
