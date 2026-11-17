@@ -35,6 +35,7 @@ REQUIRED_RUNTIME = frozenset(
         "trame/widgets/vtkjs.py",
         BUILD_INFO,
         UMD,
+        "trame_vtkjs/module/serve/js/gaussianSortWorker.js",
         "trame_vtkjs/module/serve/js/tiles3dDecodeWorker.classic.js",
         "trame_vtkjs/module/serve/wasm/tiles3d/draco_wasm_wrapper.js",
         "trame_vtkjs/module/serve/wasm/tiles3d/draco_decoder.wasm",

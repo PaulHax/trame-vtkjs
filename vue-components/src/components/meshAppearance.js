@@ -111,6 +111,7 @@ export function createMeshAppearanceRenderer(renderer, readAppearance) {
   return {
     renderer: {
       ...renderer,
+      realizationRenderer: renderer,
       addActor(actor) {
         actors.add(actor);
         apply(actor);
