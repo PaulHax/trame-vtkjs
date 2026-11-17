@@ -777,6 +777,94 @@ test("default pointCloud factory streams through the extracted member API", asyn
   assert.ok(removed.length > 0, "host disposal retires streamed VTK actors");
 });
 
+test(
+  "default page decoder preserves managed memory admission",
+  { timeout: 120_000 },
+  async () => {
+    const previousFetch = globalThis.fetch;
+    const previousWorker = globalThis.Worker;
+    const workerInstances = [];
+    let resolveDecode;
+    const decoded = new Promise((resolve) => {
+      resolveDecode = resolve;
+    });
+    globalThis.Worker = class {
+      constructor() {
+        this.messages = [];
+        workerInstances.push(this);
+      }
+      postMessage(message) {
+        this.messages.push(message);
+        if (message.kind === "decode") resolveDecode({ worker: this, message });
+      }
+      terminate() {}
+    };
+    globalThis.fetch = async (url) =>
+      String(url).endsWith("/tileset.json")
+        ? new Response(
+            JSON.stringify({
+              asset: { version: "1.1" },
+              geometricError: 0,
+              root: {
+                boundingVolume: {
+                  box: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+                },
+                geometricError: 0,
+                refine: "REPLACE",
+                content: { uri: "root.glb" },
+              },
+            }),
+            { status: 200 },
+          )
+        : new Response(new Uint8Array([1, 2, 3, 4]), { status: 200 });
+    let host;
+    try {
+      const { createStreamedSceneHost } = await loadModule(
+        "/src/components/streamedSceneHost.js?default-managed-memory",
+      );
+      host = createStreamedSceneHost();
+      const anchor = actor();
+      const hostRenderer = {
+        ...renderer(),
+        addActor() {},
+        removeActor() {},
+      };
+      host.applyBlock(
+        "mesh",
+        tilesBlock({ endpoint: "/tileset/default-memory/rev-1" }),
+        anchor,
+      );
+      host.beforeRender(
+        sceneContext(
+          new Map([["mesh", { actor: anchor, renderer: hostRenderer }]]),
+        ),
+      );
+      const { worker, message } = await decoded;
+      assert.equal(message.managedMemory, true);
+      const requestedBytes = host.describe().pageMemory.workBytes + 1;
+      worker.onmessage({
+        data: {
+          kind: "memory-request",
+          jobId: message.jobId,
+          requestId: 1,
+          bytes: requestedBytes,
+        },
+      });
+      const response = worker.messages.at(-1);
+      assert.equal(response.kind, "memory-response");
+      assert.equal(response.requestId, 1);
+      assert.equal(response.error.domain, "work");
+      assert.equal(response.error.requestedBytes, requestedBytes);
+    } finally {
+      host?.dispose();
+      await new Promise((resolve) => setImmediate(resolve));
+      globalThis.fetch = previousFetch;
+      globalThis.Worker = previousWorker;
+    }
+    assert.ok(workerInstances.length > 0);
+  },
+);
+
 test("default tiles3d factories bind each host's services and cancel only their own jobs", async () => {
   const deferred = () => {
     let resolve;

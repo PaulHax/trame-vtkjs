@@ -82,13 +82,13 @@ const tiles3dWasmUrls = () => ({
 let pageWorkerPool = null;
 let pageWorkerReferences = 0;
 const pageWorkers = {
-  decode(request) {
+  decode(request, options) {
     if (!pageWorkerPool) {
       pageWorkerPool = new DecodeWorkerPool({
         workerUrl: TILES3D_ASSET_URLS.worker,
       });
     }
-    return pageWorkerPool.decode(request);
+    return pageWorkerPool.decode(request, options);
   },
   stats() {
     return (
