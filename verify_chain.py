@@ -31,13 +31,13 @@ PIN_FILE = ROOT / "vtkjs-fork.env"
 VUE = ROOT / "vue-components"
 STREAMED_SCENE_PY = ROOT / "src" / "trame_vtkjs" / "streamed_scene.py"
 TILED_VTKJS_RELEASE = {
-    "version": "0.15.0",
-    "resolved": "https://registry.npmjs.org/tiled-vtkjs/-/tiled-vtkjs-0.15.0.tgz",
+    "version": "0.15.1",
+    "resolved": "https://registry.npmjs.org/tiled-vtkjs/-/tiled-vtkjs-0.15.1.tgz",
     "integrity": (
-        "sha512-j1IMInxZX1SqgogDsnqkdAX/3mQN5ggv3cuI7iUtrPex5e6aL8H3RqYchdQXI"
-        "rsgn8ZL8XBcAqjqm2oMQnFR/Q=="
+        "sha512-uLP6fh1ycqHwu2XolvuVdglsTuMjgBPtTxN/+dZo5V5zinFQuPidNEEjXUe8V"
+        "tK/7sHYhIHpgOKsA+a1iYGCqg=="
     ),
-    "sourceRevision": "d1837ce008b84f424ea173a335a8657fab7f5362",
+    "sourceRevision": "704a1f39fb5268b299577398d878a7292b59c8b7",
 }
 
 # The bundle is minified, so class names are mangled but the strings vtk.js
