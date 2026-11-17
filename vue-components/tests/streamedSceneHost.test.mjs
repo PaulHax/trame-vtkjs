@@ -499,6 +499,92 @@ test("fixed affine entries share one absolute tolerance with the producer", asyn
   }
 });
 
+test("runs staged work without repainting the accepted scene until publication", async () => {
+  const { createStreamedSceneHost } = await loadModule(
+    "/src/components/streamedSceneHost.js",
+  );
+  const request = globalThis.requestAnimationFrame;
+  const cancel = globalThis.cancelAnimationFrame;
+  const callbacks = new Map();
+  let nextFrame = 0;
+  let timestamp = 10;
+  globalThis.requestAnimationFrame = (callback) => {
+    callbacks.set(++nextFrame, callback);
+    return nextFrame;
+  };
+  globalThis.cancelAnimationFrame = (id) => callbacks.delete(id);
+  const runPreparation = () => {
+    assert.equal(callbacks.size, 1);
+    const [[id, callback]] = callbacks;
+    callbacks.delete(id);
+    callback(++timestamp);
+  };
+  const member = fakeMember();
+  const anchor = actor();
+  const context = sceneContext(
+    new Map([["cloud", { actor: anchor, renderer: renderer() }]]),
+  );
+  context.openGLRenderWindow = {
+    isA: (name) => name === "vtkOpenGLRenderWindow",
+    isDeleted: () => false,
+    getContext: () => null,
+  };
+  let paintRequests = 0;
+  let accepted = "parent";
+  const host = createStreamedSceneHost({
+    factories: factoriesFor(new Map([["pointCloud", [member]]])),
+    scheduleRender: () => paintRequests++,
+    workers: {},
+  });
+  try {
+    host.applyBlock("cloud", pointBlock(), anchor);
+    host.beforeRender(context);
+    await Promise.resolve();
+    paintRequests = 0;
+    const { submissions } = member.factoryContext;
+    const bytes = submissions.stats().maxBytesPerFrame;
+    const staged = [];
+    for (const part of ["geometry", "colors", "order"]) {
+      submissions.enqueue({ bytes, run: () => staged.push(part) });
+    }
+    submissions.enqueue({
+      bytes: 0,
+      requiresPaint: true,
+      run() {
+        accepted = "child";
+      },
+    });
+    assert.equal(host.needsFrame(), false);
+    runPreparation();
+    assert.deepEqual(staged, ["geometry"]);
+    assert.equal(accepted, "parent");
+    assert.equal(paintRequests, 0);
+    runPreparation();
+    assert.deepEqual(staged, ["geometry", "colors"]);
+    assert.equal(accepted, "parent");
+    assert.equal(paintRequests, 0);
+    runPreparation();
+    assert.deepEqual(staged, ["geometry", "colors", "order"]);
+    assert.equal(accepted, "parent");
+    assert.equal(paintRequests, 1);
+    assert.equal(callbacks.size, 0);
+    host.beforeRender(context);
+    assert.equal(accepted, "child");
+    assert.equal(paintRequests, 1);
+
+    submissions.enqueue({ bytes, run: () => assert.fail("disposed work ran") });
+    assert.equal(callbacks.size, 1);
+    host.dispose();
+    assert.equal(callbacks.size, 0);
+  } finally {
+    host.dispose();
+    if (request) globalThis.requestAnimationFrame = request;
+    else delete globalThis.requestAnimationFrame;
+    if (cancel) globalThis.cancelAnimationFrame = cancel;
+    else delete globalThis.cancelAnimationFrame;
+  }
+});
+
 test("an invalid block drops its member and reports why", async () => {
   const { createStreamedSceneHost } = await loadModule(
     "/src/components/streamedSceneHost.js",

@@ -660,18 +660,57 @@ export function createStreamedSceneHost(options = {}) {
   let webglRenderer = { vendor: null, renderer: null, version: null };
   let rgbaReason = null;
   let probedGl = null;
+  let disposed = false;
+  let lastContext = null;
+  let preparationFrame = null;
+
+  function liveView(context) {
+    const view = context?.openGLRenderWindow;
+    return view?.isA?.("vtkOpenGLRenderWindow") && !view.isDeleted?.()
+      ? view
+      : null;
+  }
+
+  function prepare(context, run) {
+    const renderers = context.renderers ?? [];
+    gaussian.prepareContext(context.openGLRenderWindow, renderers);
+    withPointTextureUploads(liveView(context), run);
+  }
+
+  function schedulePreparation() {
+    if (disposed || preparationFrame !== null) return;
+    if (!liveView(lastContext)) {
+      scheduleRender();
+      return;
+    }
+    preparationFrame = globalThis.requestAnimationFrame((timestamp) => {
+      preparationFrame = null;
+      if (disposed) return;
+      if (!liveView(lastContext)) {
+        scheduleRender();
+        return;
+      }
+      const timeline = globalThis.document?.timeline?.currentTime;
+      prepare(lastContext, () =>
+        coordinator.prepareWork(timeline ?? timestamp),
+      );
+    });
+  }
+
   const coordinator = (
     options.createCoordinator ?? createStreamedSceneCoordinator
   )({
     scheduleRender,
+    ...(typeof globalThis.requestAnimationFrame === "function" &&
+    typeof globalThis.cancelAnimationFrame === "function"
+      ? { schedulePreparation }
+      : {}),
     memory,
     ...(options.coordinatorOptions ?? {}),
   });
   const entries = new Map();
   // nodeId -> why its block was refused; the node has no entry meanwhile.
   const rejected = new Map();
-  let disposed = false;
-  let lastContext = null;
 
   function reconcileTextureCapabilities(context) {
     // GPU capabilities can only change with the GL context itself, and the
@@ -894,15 +933,8 @@ export function createStreamedSceneHost(options = {}) {
     const views = new Map();
     for (const entry of entries.values()) updateEntry(entry, context, views);
     coordinator.noteRenderedCameras(views);
-    const renderers = context.renderers ?? [];
-    gaussian.prepareContext(context.openGLRenderWindow, renderers);
-    withPointTextureUploads(
-      context.openGLRenderWindow?.isA?.("vtkOpenGLRenderWindow")
-        ? context.openGLRenderWindow
-        : null,
-      () => coordinator.prepareFrame(context.frameSerial),
-    );
-    gaussian.beforeRender(renderers);
+    prepare(context, () => coordinator.prepareFrame(context.frameSerial));
+    gaussian.beforeRender(context.renderers ?? []);
   }
 
   // `renderer` is the entry's drawnRenderer().
@@ -1110,6 +1142,9 @@ export function createStreamedSceneHost(options = {}) {
     dispose() {
       if (disposed) return;
       disposed = true;
+      if (preparationFrame !== null)
+        globalThis.cancelAnimationFrame(preparationFrame);
+      preparationFrame = null;
       for (const entry of entries.values()) releaseEntry(entry);
       entries.clear();
       rejected.clear();
