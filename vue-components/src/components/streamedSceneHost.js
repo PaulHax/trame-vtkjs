@@ -579,9 +579,18 @@ function errorMessage(error) {
   return String(error);
 }
 
-function describeMember(entry) {
-  const raw = entry.member?.stats?.() ?? null;
+function describeMember(entry, stalled) {
+  let raw = entry.member?.stats?.() ?? null;
   if (!raw) return raw;
+  if (stalled && raw.resourceState?.status === "ready") {
+    raw = {
+      ...raw,
+      resourceState: {
+        status: "stalled",
+        message: `Streamed member ${entry.id} stopped making progress`,
+      },
+    };
+  }
   const renderer = raw.renderer ?? {};
   if (entry.config.kind !== "tiles3d") {
     return {
@@ -1092,6 +1101,7 @@ export function createStreamedSceneHost(options = {}) {
     pickAsset,
     describe() {
       const coordinatorStats = coordinator.stats();
+      const stalledMembers = new Set(coordinatorStats.stalledMembers);
       return {
         members: [...entries.values()].map((entry) => ({
           nodeId: entry.id,
@@ -1112,7 +1122,7 @@ export function createStreamedSceneHost(options = {}) {
           anchorUserMatrix: entry.actor?.getUserMatrix?.() ?? null,
           hasMember: !!entry.member,
           error: entry.failure?.message ?? null,
-          stats: describeMember(entry),
+          stats: describeMember(entry, stalledMembers.has(entry.id)),
         })),
         coordinator: coordinatorStats,
         rejectedBlocks: [...rejected].map(([nodeId, error]) => ({
