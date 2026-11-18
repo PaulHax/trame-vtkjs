@@ -464,6 +464,7 @@ function memberConfig(entry) {
       ...common,
       ...config.kindConfig,
       fetchTileset: pageTilesetManifestFetch,
+      contentSourceIdentity: pageTilesetManifestFetch,
       wasm: tiles3dWasmUrls(),
     };
   }
@@ -471,6 +472,7 @@ function memberConfig(entry) {
   if (entry.sourceKey !== sourceKey) {
     entry.source = createHttpTileSource({
       endpoint: config.endpoint,
+      revision: config.revision,
       metadata: { pointCount: config.kindConfig.pointCount },
     });
     entry.sourceKey = sourceKey;
