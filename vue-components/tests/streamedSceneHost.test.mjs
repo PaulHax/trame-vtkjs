@@ -585,6 +585,81 @@ test("runs staged work without repainting the accepted scene until publication",
   }
 });
 
+test("member diagnostics reflect watchdog recovery and preserve resource failures", async () => {
+  const { createStreamedSceneHost } = await loadModule(
+    "/src/components/streamedSceneHost.js",
+  );
+  let now = 0;
+  let progress = 0;
+  let tilesResourceState = { status: "ready" };
+  const pointMember = fakeMember();
+  const tilesMember = fakeMember();
+  for (const member of [pointMember, tilesMember]) {
+    const inputs = member.governorInputs;
+    member.governorInputs = () => ({
+      ...inputs(),
+      work: { operations: 1, progressSerial: progress },
+    });
+  }
+  pointMember.stats = () => ({ resourceState: { status: "ready" } });
+  tilesMember.stats = () => ({ resourceState: tilesResourceState });
+  const cloudAnchor = actor();
+  const tilesAnchor = actor();
+  const hostRenderer = renderer();
+  const context = sceneContext(
+    new Map([
+      ["cloud", { actor: cloudAnchor, renderer: hostRenderer }],
+      ["tiles", { actor: tilesAnchor, renderer: hostRenderer }],
+    ]),
+  );
+  const host = createStreamedSceneHost({
+    coordinatorOptions: { now: () => now },
+    factories: factoriesFor(
+      new Map([
+        ["pointCloud", [pointMember]],
+        ["tiles3d", [tilesMember]],
+      ]),
+    ),
+    workers: {},
+  });
+  const states = () =>
+    host.describe().members.map(({ stats }) => stats.resourceState);
+  try {
+    host.applyBlock("cloud", pointBlock(), cloudAnchor);
+    host.applyBlock("tiles", tilesBlock(), tilesAnchor);
+    host.beforeRender(context);
+    assert.deepEqual(
+      states().map(({ status }) => status),
+      ["ready", "ready"],
+    );
+
+    now = 4_001;
+    host.beforeRender(context);
+    assert.deepEqual(host.describe().coordinator.stalledMembers, [
+      "cloud",
+      "tiles",
+    ]);
+    assert.deepEqual(
+      states().map(({ status }) => status),
+      ["stalled", "stalled"],
+    );
+
+    tilesResourceState = {
+      status: "unsupported",
+      errorName: "UnsupportedTilesetError",
+      message: "unsupported tile content",
+    };
+    assert.deepEqual(states()[1], tilesResourceState);
+
+    progress++;
+    host.beforeRender(context);
+    assert.deepEqual(host.describe().coordinator.stalledMembers, []);
+    assert.deepEqual(states(), [{ status: "ready" }, tilesResourceState]);
+  } finally {
+    host.dispose();
+  }
+});
+
 test("an invalid block drops its member and reports why", async () => {
   const { createStreamedSceneHost } = await loadModule(
     "/src/components/streamedSceneHost.js",
