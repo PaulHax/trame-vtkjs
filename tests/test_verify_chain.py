@@ -12,13 +12,13 @@ verify_chain = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verify_chain)
 
 RELEASE = {
-    "version": "0.16.0",
-    "resolved": "https://registry.npmjs.org/tiled-vtkjs/-/tiled-vtkjs-0.16.0.tgz",
+    "version": "0.16.1",
+    "resolved": "https://registry.npmjs.org/tiled-vtkjs/-/tiled-vtkjs-0.16.1.tgz",
     "integrity": (
-        "sha512-zLvaxp9Bo0Wo56gnZQ6ajIqXtXswlApKxjoxc8qFXPzhszjxlNh1IQHkK6+"
-        "2BqKoAtoXYtqu9I7Rzv/4U/Y7hg=="
+        "sha512-K98Q5lTzINxw9xZP6pD3oXagkCsKh9mp/H22pTwoXqpwy/+xXszYy4ShnyQXGi5G9"
+        "Lxms04uCAecRH5j2d5cTg=="
     ),
-    "sourceRevision": "e348c451c929ddbe49032df5e858b2d17a05ad59",
+    "sourceRevision": "3e1c1b635408b0e17bcf3dc414e53b5a15acda36",
 }
 
 
@@ -36,7 +36,7 @@ def install(tmp_path, monkeypatch):
         package / "package.json",
         {
             "name": "tiled-vtkjs",
-            "version": "0.16.0",
+            "version": RELEASE["version"],
             "type": "module",
             "exports": {"./core": "./core.js"},
         },
@@ -44,7 +44,9 @@ def install(tmp_path, monkeypatch):
     (package / "core.js").write_text(
         "export const ADAPTIVE_QUALITY_DEFAULTS = { minBudget: 200000 };\n"
     )
-    write_json(tmp_path / "package.json", {"dependencies": {"tiled-vtkjs": "0.16.0"}})
+    write_json(
+        tmp_path / "package.json", {"dependencies": {"tiled-vtkjs": RELEASE["version"]}}
+    )
     entry = {key: value for key, value in RELEASE.items() if key != "sourceRevision"}
 
     def lock(**overrides):
@@ -67,7 +69,7 @@ def test_verified_registry_release_records_its_source_revision(install):
 @pytest.mark.parametrize(
     "url",
     [
-        "https://registry.npmjs.org/tiled-vtkjs/-/tiled-vtkjs-0.16.1.tgz",
+        "https://registry.npmjs.org/tiled-vtkjs/-/tiled-vtkjs-0.16.0.tgz",
         "https://registry.npmjs.org/another-package/-/another-package-0.16.0.tgz",
         "https://github.com/PaulHax/tiled-vtkjs/releases/download/v0.16.0/tiled-vtkjs-0.16.0.tgz",
         "file:vendor/tiled-vtkjs-e348c451c929ddbe49032df5e858b2d17a05ad59.tgz",
@@ -87,12 +89,12 @@ def test_registry_release_requires_its_verified_integrity(install, integrity):
 
 
 def test_same_release_url_cannot_claim_another_version(install):
-    install.lock(version="0.16.1")
+    install.lock(version="0.16.0")
     with pytest.raises(SystemExit, match="lock version"):
         verify_chain.check_tiled_vtkjs()
 
 
-@pytest.mark.parametrize("specification", ["^0.16.0", "latest"])
+@pytest.mark.parametrize("specification", [f"^{RELEASE['version']}", "latest"])
 def test_manifest_must_pin_the_verified_release(install, specification):
     write_json(
         install.root / "package.json", {"dependencies": {"tiled-vtkjs": specification}}
@@ -107,7 +109,7 @@ def test_manifest_must_pin_the_verified_release(install, specification):
     ("field", "value", "message"),
     [
         ("name", "another-package", "identify"),
-        ("version", "0.16.1", "installed tiled-vtkjs"),
+        ("version", "0.16.0", "installed tiled-vtkjs"),
     ],
 )
 def test_installed_package_must_match_the_verified_release(
